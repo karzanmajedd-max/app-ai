@@ -65,6 +65,10 @@ jobs:
           print("Background notification fix applied")
           PY
           grep -q 'Always publish the notification before an overlay' zikrakan/build-source/Zikrakan/app/src/main/java/com/zikr/zikrakan/Notifier.kt
+      - name: Set Zikrakan version 4
+        run: |
+          sed -i 's/versionCode = 3/versionCode = 4/; s/versionName = "3.0"/versionName = "4.0"/' zikrakan/build-source/Zikrakan/app/build.gradle.kts
+          grep -q 'versionCode = 4' zikrakan/build-source/Zikrakan/app/build.gradle.kts
       - name: Build debug APK
         working-directory: zikrakan/build-source/Zikrakan
         run: gradle --no-daemon :app:assembleDebug --stacktrace
