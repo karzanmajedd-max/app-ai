@@ -1,10 +1,10 @@
 name: Build Easy English APK
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'easy-english/**'
       - '.github/workflows/build-easy-english.yml'
-  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,12 +16,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - run: yes | sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' || true
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/aapt2"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build debug APK
+      - name: Build APK
         working-directory: easy-english
         run: gradle --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4
