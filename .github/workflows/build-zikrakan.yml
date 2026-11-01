@@ -1,0 +1,38 @@
+name: Build Zikrakan Android APK
+on:
+  push:
+    paths:
+      - 'zikrakan/**'
+      - '.github/workflows/build-zikrakan.yml'
+  workflow_dispatch:
+jobs:
+  android:
+    name: Compile APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          yes | sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' || true
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Unpack uploaded project
+        run: unzip -q zikrakan/Zikrakan-Android-Project.zip -d zikrakan/build-source
+      - name: Build Zikrakan debug APK
+        working-directory: zikrakan/build-source/Zikrakan
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Publish installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zikrakan-Android-APK
+          path: zikrakan/build-source/Zikrakan/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
