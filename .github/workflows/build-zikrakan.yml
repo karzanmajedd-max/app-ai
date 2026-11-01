@@ -1,8 +1,8 @@
-name: Build Zikrakan v2.2 Safe APK
+name: Build Zikrakan v2.3 Preview Fix APK
 
 on:
   push:
-    branches: [build-zikrakan-v2-2-safe]
+    branches: [build-zikrakan-v2-3-preview-fix]
   workflow_dispatch:
 
 permissions:
@@ -34,6 +34,13 @@ jobs:
         run: |
           unzip -q zikrakan/Zikrakan-v2.1-Android-Source.zip
           python3 zikrakan/harden.py
+          python3 zikrakan/fix_preview.py
+          python3 - <<'PY'
+          from pathlib import Path
+          h=Path('Zikrakan/app/src/main/assets/index.html').read_text()
+          Path('/tmp/zikrakan-preview.js').write_text(h.split('<script>',1)[1].split('</script>',1)[0])
+          PY
+          node --check /tmp/zikrakan-preview.js
           test ! -f Zikrakan/app/src/main/java/com/zikr/zikrakan/Overlay.kt
           ! grep -q 'SYSTEM_ALERT_WINDOW' Zikrakan/app/src/main/AndroidManifest.xml
           ! grep -q 'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' Zikrakan/app/src/main/AndroidManifest.xml
@@ -59,13 +66,13 @@ jobs:
             --ks-key-alias zikrakan-release \
             --ks-pass pass:temporaryBuildKeyPassword123 \
             --key-pass pass:temporaryBuildKeyPassword123 \
-            --out Zikrakan-v2.2-Safe.apk /tmp/zikrakan-aligned.apk
-          "$BT/apksigner" verify --verbose --print-certs Zikrakan-v2.2-Safe.apk
-          "$BT/aapt" d permissions Zikrakan-v2.2-Safe.apk | tee permissions.txt
+            --out Zikrakan-v2.3-Preview-Fixed.apk /tmp/zikrakan-aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs Zikrakan-v2.3-Preview-Fixed.apk
+          "$BT/aapt" d permissions Zikrakan-v2.3-Preview-Fixed.apk | tee permissions.txt
           ! grep -E 'SYSTEM_ALERT_WINDOW|REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' permissions.txt
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: Zikrakan-v2.2-Safe-APK
-          path: Zikrakan-v2.2-Safe.apk
+          name: Zikrakan-v2.3-Preview-Fixed-APK
+          path: Zikrakan-v2.3-Preview-Fixed.apk
           if-no-files-found: error
