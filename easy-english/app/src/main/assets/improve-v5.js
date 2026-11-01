@@ -6,6 +6,16 @@ let speechMode='lesson';
 const oldRender=render,oldAiPage=aiPage,oldSettings=settings,oldLevelPage=levelPage;
 const oldConnectionTest=testAiConnection,oldSaveAiConfig=saveAiConfig,oldRemoveKey=removeGeminiKey;
 const oldNativeVoice=window.easyEnglishOnNativeSpeech;
+const oldNativeGeminiResult=window.easyEnglishGeminiNativeResult;
+window.easyEnglishGeminiNativeResult=function(id,ok,payload){
+ if(!ok){
+   const match=String(payload||'').match(/Gemini HTTP (\d+)/);
+   if(match)payload=geminiFailure(Number(match[1]),{message:''});
+   else if(/Connection error|UnknownHost|timeout|network|Unable to resolve host/i.test(String(payload)))payload='پەیوەندی بە ئینتەرنێت نییە یان خزمەتگوزاری بەردەست نییە.';
+ }
+ return oldNativeGeminiResult(id,ok,payload);
+};
+
 function verified(){
  try{return localStorage.getItem(VERIFY_KEY)==='1' && (nativeGeminiKeyPresent() || geminiApiKey.length>=15)}catch(e){return false}
 }
@@ -66,7 +76,7 @@ aiPage=function(){
  html=html.replace(/<p class="ai3-footer-note">[\s\S]*?<\/p>/,'');
  html=html.replace('GOOGLE GEMINI · AI TEACHER','EASY ENGLISH · AI TEACHER');
  html=html.replace('فێربوونی ئینگلیزی لەگەڵ Gemini','فێربوونی ئینگلیزی بە گفتوگۆ');
- html=html.replace('پەیوەندی پشتڕاستکراوە','ئامادەی گفتوگۆیە');
+ html=html.replace('پەیوەندی پشتڕاستکراوە','ئامادەی گفتوگۆیە').replace('کلیل دانراوە؛ پەیوەندی تاقی بکەرەوە','ئامادەی گفتوگۆیە').replace('پەیوەندی هێشتا نەکراوە','ئامادەی گفتوگۆیە');
  html=html.replace('<button class="ai3-send"','<button class="ai5-voice" type="button" data-action="ai5-mic" aria-label="قسەکردن بە مایکرۆفۆن">🎙</button><button class="ai3-send"');
  html=html.replace('<div class="ai3-compose-foot">','<div id="ai5-voice-status" class="ai5-voice-status" role="status">🎙 بۆ قسەکردن بە ئینگلیزی دوگمەی مایکرۆفۆن دابگرە.</div><div class="ai3-compose-foot">');
  return html;
