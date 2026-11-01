@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -33,3 +33,18 @@ jobs:
         with:
           name: EasyEnglish-Android-APK
           path: easy-english/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish olive APK to GitHub Releases
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[release-olive]')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="easyenglish-olive-github-v4"
+          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_Olive_GitHub.apk
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" EasyEnglish_Olive_GitHub.apk --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" EasyEnglish_Olive_GitHub.apk --repo "$GITHUB_REPOSITORY" --target main --title "Easy English - Olive Cream GitHub Build" --notes "GitHub-built debug APK with olive and cream styling. It is a lighter build of the GitHub source, not the exact 7.7 MB locally packaged Easy English 4.0 APK; bundled offline voice audio may differ." --latest=false
+          fi
