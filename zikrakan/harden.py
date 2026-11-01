@@ -26,7 +26,6 @@ main = j / "MainActivity.kt"
 t = main.read_text()
 for line in [
     "import android.app.AlertDialog\n",
-    "import android.net.Uri\n",
     "import android.os.PowerManager\n",
 ]:
     t = t.replace(line, "")
