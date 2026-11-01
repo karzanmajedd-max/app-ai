@@ -27,6 +27,10 @@ jobs:
           gradle-version: '8.9'
       - name: Unpack uploaded project
         run: unzip -q zikrakan/Zikrakan-Android-Project.zip -d zikrakan/build-source
+      - name: Apply updated project source
+        shell: bash
+        run: |
+          base64 --decode zikrakan/source-patch.b64 | tar -xJf - -C zikrakan/build-source/Zikrakan
       - name: Build Zikrakan debug APK
         working-directory: zikrakan/build-source/Zikrakan
         run: gradle --no-daemon :app:assembleDebug
