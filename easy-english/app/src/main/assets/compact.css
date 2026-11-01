@@ -1,0 +1,41 @@
+/* Easy English 3.4: compact 3D layout matching approved reference */
+.gl-feature-grid,.gl-skill-grid{direction:ltr}
+.gl-feature,.gl-skill{direction:rtl}
+.gl-feature strong,.gl-feature small,.gl-feature-cta{align-self:flex-start}
+.gl-hero-head .gl-badge{order:0}.gl-hero-head .gl-level-badge{order:1}
+.gl-nowrap{display:inline-block;white-space:nowrap;direction:ltr;unicode-bidi:isolate;font-family:Arial,sans-serif;vertical-align:baseline}
+.app{padding:8px 10px calc(83px + env(safe-area-inset-bottom))}
+.top{padding:7px 4px 9px;min-height:59px}
+.logo{width:43px;height:43px;border-radius:14px}
+.brand b{font-size:18px}.brand small{font-size:8px;letter-spacing:2px;margin-top:2px}
+.gl-home{padding-top:5px}.gl-greeting{padding:5px 3px 11px}
+.gl-greeting h1{font-size:clamp(16px,4.55vw,20px);line-height:1.55;margin-bottom:3px}
+.gl-greeting p{font-size:10.5px;line-height:1.5}
+.gl-hero{min-height:0;padding:10px 12px 11px;border-radius:22px;box-shadow:inset 0 -4px 8px #01febc35,0 8px 20px #0007}
+.gl-hero-head{min-height:22px}.gl-badge{font-size:10px;padding:4px 8px}.gl-level-badge{font-size:10px}
+.gl-hero-main{min-height:100px;gap:3px}
+.gl-book3d{flex-basis:108px;width:108px;height:105px}.gl-book3d img{width:112px;height:112px}
+.gl-book-label{left:24px;top:34px;font-size:17px}.gl-book3d em{left:28px;bottom:5px;font-size:11px}
+.gl-hero-copy h2{font-size:clamp(14px,4vw,17px);line-height:1.45;margin-bottom:3px}
+.gl-hero-copy p{font-size:11px;line-height:1.45}
+.gl-track-row{margin:3px 3px 10px;gap:7px}.gl-track{height:7px}.gl-track-row strong{font-size:10px}
+.gl-continue{min-height:43px;border-radius:15px;font-size:13px;position:relative;gap:7px;box-shadow:inset 0 3px 4px #ffffff60,0 4px 0 #006d6688,0 7px 13px #001b2d66}
+.gl-continue b{position:absolute;right:12px;font-size:13px;margin:0}
+.gl-daily{min-height:70px;margin:11px 0 12px;padding:6px 9px;border-radius:20px;gap:7px}
+.gl-calendar{width:56px;height:56px;flex-basis:56px}.gl-calendar img{width:56px;height:56px}
+.gl-daily-copy strong{font-size:13px}.gl-daily-copy small{font-size:9px;line-height:1.6}
+.gl-ring{flex-basis:52px;width:52px;height:52px;padding:5px}.gl-ring>b{font-size:14px}
+.gl-feature-grid{gap:8px}.gl-feature{min-height:123px;border-radius:19px;padding:10px 9px}
+.gl-feature strong{font-size:clamp(13px,3.5vw,15px);line-height:1.25}.gl-feature strong em{font-size:23px}
+.gl-feature small{font-size:8.5px;margin-top:3px;line-height:1.55}
+.gl-feature-img{width:78px;height:75px;left:0;bottom:26px}
+.gl-feature-cta{padding:6px 9px;font-size:10px}
+.gl-skills{margin:10px 0 8px}.gl-skills h3{font-size:14px;margin:0 0 9px}
+.gl-skill-grid{gap:8px}.gl-skill{min-height:100px;border-radius:18px;gap:1px}
+.gl-skill img{width:52px;height:54px}.gl-skill b{font-size:12px}.gl-skill small{font-size:9px}
+.gl-footnote{font-size:9px;margin:8px 0}
+.bottom{border-radius:21px 21px 0 0}.gl-nav{padding:2px 3px 0}
+.gl-nav .tab{min-height:63px;font-size:10px;padding:4px 0}
+.gl-navicon{width:37px;height:35px;border-radius:11px}.gl-navicon img{width:29px;height:29px}
+@media(min-width:460px){.app{padding-left:20px;padding-right:20px}.gl-hero{padding:16px 18px}.gl-hero-main{min-height:128px}.gl-book3d{flex-basis:135px;width:135px;height:130px}.gl-book3d img{width:138px;height:138px}.gl-hero-copy h2{font-size:20px}.gl-daily{min-height:84px}.gl-feature{min-height:150px}.gl-skill{min-height:120px}}
+@media(max-width:335px){.gl-book3d{flex-basis:90px;width:90px}.gl-book3d img{width:93px;height:93px}.gl-hero-copy h2{font-size:13px}.gl-feature-img{width:60px;height:65px}.gl-feature strong{font-size:12px}.gl-daily-copy small{font-size:8px}}
