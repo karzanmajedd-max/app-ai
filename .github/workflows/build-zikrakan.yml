@@ -32,6 +32,7 @@ jobs:
         run: |
           base64 -d zikrakan/v3-fix.tar.gz.b64 | tar -xzf - -C zikrakan/build-source/Zikrakan
           test -f zikrakan/build-source/Zikrakan/app/src/main/java/com/zikr/zikrakan/DismissReceiver.kt
+          sed -i 's/setBackgroundColor(background)/setBackgroundColor(0xFF061410.toInt())/g' zikrakan/build-source/Zikrakan/app/src/main/java/com/zikr/zikrakan/MainActivity.kt
       - name: Build debug APK
         working-directory: zikrakan/build-source/Zikrakan
         run: gradle --no-daemon :app:assembleDebug --stacktrace
