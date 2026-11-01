@@ -26,6 +26,23 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Verify JavaScript syntax and required Easy English screens
+        shell: bash
+        run: |
+          node --check easy-english/app/src/main/assets/improve-v5.js
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('easy-english/app/src/main/assets')
+          html=(root/'index.html').read_text()
+          js=(root/'improve-v5.js').read_text()
+          css=(root/'improve-v5.css').read_text()
+          assert 'improve-v5.js' in html and 'improve-v5.css' in html
+          assert 'data-action="ai5-mic"' in js
+          assert 'gemini-remember' in js and 'testAiConnection=async' in js
+          assert 'ee5-setup' in js and '.quiz-box .question' in css
+          assert 'const LEVELS=' in html and 'function settings()' in html
+          print('Easy English V5 source checks passed')
+          PY
       - name: Build APK
         working-directory: easy-english
         run: gradle --no-daemon assembleDebug
@@ -41,10 +58,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="easyenglish-olive-github-v4"
-          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_Olive_GitHub.apk
+          TAG="easyenglish-olive-fixed-v5"
+          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_Olive_Fixed_v5.apk
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" EasyEnglish_Olive_GitHub.apk --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$TAG" EasyEnglish_Olive_Fixed_v5.apk --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" EasyEnglish_Olive_GitHub.apk --repo "$GITHUB_REPOSITORY" --target main --title "Easy English - Olive Cream GitHub Build" --notes "GitHub-built debug APK with olive and cream styling. It is a lighter build of the GitHub source, not the exact 7.7 MB locally packaged Easy English 4.0 APK; bundled offline voice audio may differ." --latest=false
+            gh release create "$TAG" EasyEnglish_Olive_Fixed_v5.apk --repo "$GITHUB_REPOSITORY" --target main --title "Easy English 5.0 - Olive Cream Fixes" --notes "GitHub-built debug APK V5: high-contrast olive/cream styling, Gemini first-run verification and hidden normal API setup, corrected Gemini native callback, and microphone support with fallback. Lightweight build: Android TTS voice availability and AI voice recognition depend on device. Install and verify on your phone." --latest=false
           fi
