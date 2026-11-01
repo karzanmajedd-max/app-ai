@@ -1,4 +1,4 @@
-name: Build Zikrakan Android APK
+name: Build Zikrakan Android APK v3
 on:
   push:
     paths:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 jobs:
   android:
-    name: Compile APK
+    name: Compile tested APK
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -17,26 +17,26 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK
-        shell: bash
-        run: |
-          yes | sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' || true
-          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Unpack uploaded project
+      - name: Unpack original Zikrakan Android project
         run: unzip -q zikrakan/Zikrakan-Android-Project.zip -d zikrakan/build-source
-      - name: Apply updated project source
+      - name: Apply Zikrakan v3 fixes
         shell: bash
         run: |
-          base64 --decode zikrakan/source-patch.b64 | tar -xJf - -C zikrakan/build-source/Zikrakan
-      - name: Build Zikrakan debug APK
+          base64 -d zikrakan/v3-fix.tar.gz.b64 | tar -xzf - -C zikrakan/build-source/Zikrakan
+          test -f zikrakan/build-source/Zikrakan/app/src/main/java/com/zikr/zikrakan/DismissReceiver.kt
+      - name: Build debug APK
         working-directory: zikrakan/build-source/Zikrakan
-        run: gradle --no-daemon :app:assembleDebug
-      - name: Publish installable APK
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
+      - name: Confirm APK generated
+        run: |
+          ls -lh zikrakan/build-source/Zikrakan/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish APK
         uses: actions/upload-artifact@v4
         with:
-          name: Zikrakan-Android-APK
+          name: Zikrakan-v3-APK
           path: zikrakan/build-source/Zikrakan/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
