@@ -1,7 +1,8 @@
-name: Build Zikrakan v2.1 APK
+name: Build Zikrakan v2.2 Safe APK
+
 on:
   push:
-    branches: [build-zikrakan-v2-1]
+    branches: [build-zikrakan-v2-2-safe]
   workflow_dispatch:
 
 permissions:
@@ -9,7 +10,7 @@ permissions:
 
 jobs:
   android:
-    name: Compile Android APK
+    name: Compile and sign release APK
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -22,25 +23,49 @@ jobs:
       - name: Install Android SDK packages
         shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
           yes | sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' || true
           test -f "$ANDROID_HOME/platforms/android-35/android.jar"
-          test -f "$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Extract Zikrakan project
+      - name: Extract and harden app source
         run: |
           unzip -q zikrakan/Zikrakan-v2.1-Android-Source.zip
-          sed -i 's/versionCode = 3/versionCode = 5/' Zikrakan/app/build.gradle.kts
-      - name: Build APK
+          python3 zikrakan/harden.py
+          test ! -f Zikrakan/app/src/main/java/com/zikr/zikrakan/Overlay.kt
+          ! grep -q 'SYSTEM_ALERT_WINDOW' Zikrakan/app/src/main/AndroidManifest.xml
+          ! grep -q 'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' Zikrakan/app/src/main/AndroidManifest.xml
+      - name: Build release
         working-directory: Zikrakan
-        run: gradle assembleDebug --no-daemon --stacktrace
-      - name: Upload installable APK
-        if: always()
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+      - name: Align and sign APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          UNSIGNED="Zikrakan/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$UNSIGNED"
+          "$BT/zipalign" -p -f 4 "$UNSIGNED" /tmp/zikrakan-aligned.apk
+          keytool -genkeypair -noprompt -alias zikrakan-release \
+            -keyalg RSA -keysize 3072 -validity 10000 \
+            -keystore /tmp/zikrakan-release.jks \
+            -storepass temporaryBuildKeyPassword123 \
+            -keypass temporaryBuildKeyPassword123 \
+            -dname "CN=Zikrakan, O=Personal Dhikr App, C=IQ"
+          "$BT/apksigner" sign \
+            --ks /tmp/zikrakan-release.jks \
+            --ks-key-alias zikrakan-release \
+            --ks-pass pass:temporaryBuildKeyPassword123 \
+            --key-pass pass:temporaryBuildKeyPassword123 \
+            --out Zikrakan-v2.2-Safe.apk /tmp/zikrakan-aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs Zikrakan-v2.2-Safe.apk
+          "$BT/aapt" d permissions Zikrakan-v2.2-Safe.apk | tee permissions.txt
+          ! grep -E 'SYSTEM_ALERT_WINDOW|REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' permissions.txt
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: Zikrakan-v2.1-APK
-          path: Zikrakan/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: warn
+          name: Zikrakan-v2.2-Safe-APK
+          path: Zikrakan-v2.2-Safe.apk
+          if-no-files-found: error
