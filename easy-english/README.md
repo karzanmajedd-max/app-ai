@@ -1,7 +1,9 @@
-# Easy English — Kurdish-English learning app
+# Easy English — Android learning app
 
-This is an **Android application source project** for Easy English, with 30 beginner levels, alphabet A–Z, Sorani Kurdish glosses, a colorful icon-based UI, quizzes and review, and a Gemini AI teacher requiring a personal key. The source contains **no API keys**.
+30 progressive English levels; level 1 includes all A–Z. Sorani Kurdish translation, review, voice practice, Gemin AI teacher with Bring Your Own Key and an interactive colorful icon design. App text and progress remain local on device.
 
-The Android app code lives under `easy-english/`. GitHub Actions builds a **debug APK** from this folder. Debug APKs are for testing only and are not production signed. Some device speech features depend on installed Android services; Gemini features need API connectivity and a user-provided key. The offline male voice bundle from earlier versions is available in the separate full project ZIP, not included in this GitHub checkout; Android TTS is the fallback.
+The main app is bundled offline as HTML in Android WebView and Java bridge. Male voice needs a supported device voice in this lightweight GitHub build; the original full ZIP has a separate offline voice package. The Gemini key is entered by the user and encrypted locally with Android Keystore when remembered. **Never commit a real Gemini key to the repository.** For public distribution, use a controlled backend or Firebase AI Logic/App Check, not unrestricted client keys.
+
+To build, open the GitHub Actions workflow **Build Easy English APK** and download its debug artifact on success. Or open project in Android Studio and build APK. This project is a test build and is not production-signed.
 
 © Didar ismail
