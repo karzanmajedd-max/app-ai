@@ -126,6 +126,7 @@ body{background:radial-gradient(75% 27% at 5% 1%,#09617565,transparent 77%),radi
 @media(max-width:375px){.gl-book3d{flex-basis:113px;width:113px}.gl-book3d img{height:115px;width:115px}.gl-book-label{left:21px;top:44px;font-size:18px}.gl-hero h2{font-size:15px}.gl-feature-img{width:77px}.gl-feature strong{font-size:14px}.gl-skill img{width:63px;height:62px}.gl-ring{flex-basis:61px;height:61px;width:61px}.gl-calendar,.gl-calendar img{width:58px;height:58px;flex-basis:58px}}
 
 </style>
+<link rel="stylesheet" href="compact.css">
 </head>
 <body>
 <div class="app"><header class="top" id="top"></header><main id="main"></main><footer class="footer">EASY ENGLISH · © Didar ismail</footer></div>
@@ -169,7 +170,7 @@ function home(){
    <div class="gl-hero-head"><span class="gl-badge">وانەی داهاتوو <b>▶</b></span><span class="gl-level-badge">لیڤلی ${nku(n)} / ٣٠</span></div>
    <div class="gl-hero-main">
      <div class="gl-book3d" aria-hidden="true"><img src="art/books.png" alt=""><span class="gl-book-label">A–Z</span><em>ABC</em></div>
-     <div class="gl-hero-copy"><h2>${esc(l.title)}</h2><p lang="en" dir="ltr">${esc(l.enTitle)}</p></div>
+     <div class="gl-hero-copy"><h2>${esc(l.title).replace(/A[–-]Z/g,'<span class="gl-nowrap">A–Z</span>')}</h2><p lang="en" dir="ltr">${esc(l.enTitle)}</p></div>
    </div>
    <div class="gl-track-row"><div class="gl-track"><div style="width:${percent}%"></div></div><strong>${nku(percent)}٪</strong></div>
    <button class="gl-continue" type="button" data-action="enter" data-level="${n}">📖 <span>بەردەوام بە فێربوون</span><b>▶</b></button>
