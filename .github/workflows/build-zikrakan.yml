@@ -17,7 +17,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - name: Confirm Android SDK
+        shell: bash
+        run: |
+          yes | sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' || true
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
