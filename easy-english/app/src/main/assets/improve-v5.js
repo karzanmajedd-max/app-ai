@@ -15,7 +15,7 @@ function onboarding(){
  const hasStored=nativeGeminiKeyPresent()||geminiApiKey.length>=15;
  return `<div class="ee5-setup" role="main" aria-label="پەیوەستکردنی مامۆستای زیرەک">
   <div class="ee5-setup-star">✦</div>
-  <div class="ee5-setup-logo">Easy <em>English</em> <small>5.4</small></div>
+  <div class="ee5-setup-logo">Easy <em>English</em> <small>5.5</small></div>
   <h1>پەیوەستکردنی مامۆستای زیرەک</h1>
   <p>تەنها یەکەم جار کلیلی Google Gemini داخیل بکە، پاشان ڕاستەوخۆ بچۆ ناو وانەکانت.</p>
   <label for="gemini-key">Gemini API Key</label>
@@ -74,7 +74,7 @@ aiPage=function(){
  requestAnimationFrame(()=>{fitChat();const c=document.getElementById('ai-chat');if(c)c.scrollTop=c.scrollHeight;});
  return `<section class="ee-chat"><header class="ee-chat-head"><button class="softbtn" data-page="home">← ماڵەوە</button><div><strong>مامۆستای ئینگلیزی</strong><small>لیڤلی ${Math.min(aiLessonContext||nextLevel(),30)} / 30</small></div><button class="softbtn" data-action="ai-clear">پاککردنەوە</button></header>
  <div id="ai-chat" class="ee-thread" role="log" aria-live="polite">${messages||'<div class="ee-chat-empty"><h3>ڕاهێنان لەگەڵ مامۆستا</h3><p>پرسیارەکەت بنووسە یان مایکرۆفۆن بەکاربهێنە.</p><button class="softbtn" data-ai-example="Ask me one simple beginner English question and explain it in Sorani Kurdish.">ڕاهێنان دەست پێ بکە</button></div>'}${aiPending?'<p class="ee-wait" role="status">مامۆستا وەڵام دەداتەوە…</p>':''}</div>
- <div class="ee-composer"><div id="ai5-voice-status" role="status"></div><div class="ee-compose-row"><button class="ee-mic" type="button" data-action="ai5-mic" aria-label="قسەکردن" ${aiPending?'disabled':''}>🎙</button><textarea id="ai-question" dir="auto" rows="2" placeholder="لێرە بنووسە…" aria-label="نامە بۆ مامۆستا">${esc(chatDraft)}</textarea><button class="ee-send" type="button" data-action="ai-send" aria-label="ناردن" ${aiPending?'disabled':''}>➤</button></div></div></section>`;
+ <div class="ee-composer">${lastFailedMessage&&!aiPending?'<button class="softbtn" data-action="ai-retry">دووبارە ناردنەوەی نامەکە ↻</button>':''}<div id="ai5-voice-status" role="status"></div><div class="ee-compose-row"><button class="ee-mic" type="button" data-action="ai5-mic" aria-label="قسەکردن" ${aiPending?'disabled':''}>🎙</button><textarea id="ai-question" dir="auto" rows="2" placeholder="لێرە بنووسە…" aria-label="نامە بۆ مامۆستا">${esc(chatDraft)}</textarea><button class="ee-send" type="button" data-action="ai-send" aria-label="ناردن" ${aiPending?'disabled':''}>➤</button></div></div></section>`;
 };
 levelPage=function(){
  let html=oldLevelPage();

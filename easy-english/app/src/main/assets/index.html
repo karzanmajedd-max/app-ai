@@ -381,7 +381,7 @@ const GEMINI_MODELS=['auto',...GEMINI_SEED_MODELS];
 function isGeminiTextModel(m){return /^gemini-[A-Za-z0-9._-]{1,150}$/.test(m)&&!/image|tts|audio|live|robotics|computer-use|deep-research|omni|nano-banana|transcribe|music|video/i.test(m)}
 let discoveredModels=[];
 try{const cached=JSON.parse(localStorage.getItem('easyenglish_model_cache_v2')||'[]');for(const m of cached)if(isGeminiTextModel(m)&&!GEMINI_MODELS.includes(m))GEMINI_MODELS.push(m)}catch(e){}
-let aiPrefs={model:'gemini-3.8-flash',remember:false};
+let aiPrefs={model:'gemini-3.5-flash-lite',remember:false};
 try{aiPrefs={...aiPrefs,...JSON.parse(localStorage.getItem(GEMINI_PREFS_KEY)||'{}')}}catch(e){}
 if(aiPrefs.model!=='auto'&&!/^gemini-[A-Za-z0-9._-]{1,150}$/.test(aiPrefs.model))aiPrefs.model='auto';
 if(!GEMINI_MODELS.includes(aiPrefs.model))GEMINI_MODELS.push(aiPrefs.model);
@@ -401,6 +401,7 @@ let aiPending=false;
 let aiStatus='';
 let aiReady=false;
 let aiActiveModel='';
+let lastFailedMessage='';
 function aiEsc(v){return esc(String(v||''))}
 let aiLessonContext=null;
 function aiPage(){
@@ -465,7 +466,7 @@ function geminiFailure(code,apiError){
  return (messages[code]||'پەیوەندی سەرکەوتوو نەبوو.')+' (HTTP '+code+')'+(detail?' — '+detail:'');
 }
 function geminiError(code,error){const e=new Error(geminiFailure(code,error));e.status=Number(code);return e;}
-const EASY_GEMINI_SYSTEM=`You are Easy English, a concise, supportive and practical English teacher for an absolute beginner whose native language is Sorani Kurdish. Never greet the student or use filler. Start with the answer or lesson immediately. The curriculum has exactly 30 levels. Level 1 covers all English A-Z uppercase and lowercase letters together; levels 2-30 teach basic vocabulary and phrases progressively. After each very short English explanation give an accurate Sorani Kurdish explanation (Arabic-based Sorani script). Ask only one simple question per turn, correct mistakes, review past errors, and keep the response to 130 words or fewer. The student prefers slow speech; produce short, simple English sentences that TTS can read slowly. Do not pretend to have listened to audio or evaluated pronunciation; text chat only.`;
+const EASY_GEMINI_SYSTEM=`You are Easy English, a concise, supportive and practical English teacher for an absolute beginner whose native language is Sorani Kurdish. Never greet the student or use filler. Start with the answer or lesson immediately. The curriculum has exactly 30 levels. Level 1 covers all English A-Z uppercase and lowercase letters together; levels 2-30 teach basic vocabulary and phrases progressively. After each very short English explanation give an accurate Sorani Kurdish explanation (Arabic-based Sorani script). Ask only one simple question per turn, correct mistakes, review past errors, and keep the response to 65 words or fewer. The student prefers slow speech; produce short, simple English sentences that TTS can read slowly. Do not pretend to have listened to audio or evaluated pronunciation; text chat only.`;
 let geminiCallId=0;
 const geminiCallbacks=new Map();
 window.easyEnglishGeminiNativeResult=function(id,ok,payload){
@@ -481,7 +482,7 @@ function nativeGeminiRequest(method,args,signal){
   const id='gemini'+(++geminiCallId);
   const cancel=()=>{const cb=geminiCallbacks.get(id);if(!cb)return;geminiCallbacks.delete(id);clearTimeout(cb.timer);cb.cleanup();reject(new DOMException('Aborted','AbortError'));};
   const cleanup=()=>signal?.removeEventListener('abort',cancel);
-  const timer=setTimeout(()=>{geminiCallbacks.delete(id);cleanup();reject(new Error('کاتی پەیوەندی تەواو بوو'))},35000);
+  const timer=setTimeout(()=>{geminiCallbacks.delete(id);cleanup();reject(new Error('کاتی پەیوەندی تەواو بوو'))},30000);
   geminiCallbacks.set(id,{resolve,reject,timer,cleanup});signal?.addEventListener('abort',cancel,{once:true});
   try{if(method==='list')Android.geminiListModels(id,args[0]);else Android.geminiGenerate(args[0],id,args[1]);}
   catch(e){geminiCallbacks.delete(id);clearTimeout(timer);cleanup();reject(e);}
@@ -513,7 +514,7 @@ async function geminiGenerate(contents,signal){
  if(requestedModel==='auto'&&!discoveredModels.length)await discoverGeminiModels(signal);
  // An explicit choice is never replaced, even when missing from models.list or returning 404.
  const candidates=requestedModel==='auto'?discoveredModels.slice(0,4):[requestedModel];
- const requestBody=JSON.stringify({systemInstruction:{parts:[{text:EASY_GEMINI_SYSTEM}]},contents,generationConfig:{maxOutputTokens:2048,temperature:0.45}});
+ const requestBody=JSON.stringify({systemInstruction:{parts:[{text:EASY_GEMINI_SYSTEM}]},contents,generationConfig:{maxOutputTokens:1024,temperature:0.45}});
  let lastError;
  for(const model of candidates){
   try{
@@ -545,7 +546,7 @@ async function testAiConnection(){
  if(aiPending)return;
  if(!saveAiConfig(true)){aiStatus='سەرەتا Gemini API Key بنووسە.';toast(aiStatus);render();return}
  aiPending=true;aiStatus='پەیوەندی بە Gemini تاقی دەکرێتەوە…';render();
- const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),120000);
+ const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),45000);
  try{
    if(aiPrefs.model==='auto')discoveredModels=[];
    const result=await geminiGenerate([{role:'user',parts:[{text:'Reply only with the English word OK.'}]}],ctrl.signal);
@@ -558,14 +559,15 @@ async function sendAiMessage(){
  const content=String(document.getElementById('ai-question')?.value||'').trim();if(!content)return;
  if(!saveAiConfig(true)){aiStatus='سەرەتا Gemini API Key دابنێ و تاقی بکەرەوە.';toast(aiStatus);render();return}
  const lv=level(Math.min(aiLessonContext||nextLevel(),30));
- const prior=aiMessages.slice(-10).map(x=>({role:x.role==='assistant'?'model':'user',parts:[{text:x.content.slice(0,750)}]}));
+ const prior=aiMessages.filter(x=>!x.content.startsWith('⚠️')).slice(-6).map(x=>({role:x.role==='assistant'?'model':'user',parts:[{text:x.content.slice(0,750)}]}));
+ lastFailedMessage='';
  aiMessages.push({role:'user',content});aiMessages=aiMessages.slice(-16);
  try{sessionStorage.setItem('easy_ai_chat',JSON.stringify(aiMessages))}catch(e){}aiPending=true;render();
- const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),120000);
+ const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),45000);
  try{
    const response=await geminiGenerate([...prior,{role:'user',parts:[{text:`Current level: ${lv.number}/30. Topic: ${lv.enTitle||lv.title}. Lesson vocabulary with Sorani meanings: ${lv.items.slice(0,18).map(x=>x.en+" = "+x.ku).join("; ")}. Keep teaching beginner English from this lesson, ask one short question at a time and explain the meaning in Sorani Kurdish. Student message: ${content}`}]}],ctrl.signal);
    aiMessages.push({role:'assistant',content:response});aiReady=true;
- }catch(e){let message=e?.name==='AbortError'?'کاتی پەیوەندی تەواو بوو.':String(e?.message||'هەڵەی پەیوەندی');if(e instanceof TypeError)message='پەیوەندی بە Google Gemini لەم وەشانەی WebView دا سەرکەوتوو نەبوو؛ لەوانەیە پێویستی بە وەشانی Native بێت.';aiStatus=message;toast('هەڵەی پەیوەندی؛ وردەکاری لە گفتوگۆکەدایە.');aiMessages.push({role:'assistant',content:'⚠️ '+message});}
+ }catch(e){let message=e?.name==='AbortError'?'کاتی پەیوەندی تەواو بوو.':String(e?.message||'هەڵەی پەیوەندی');if(e instanceof TypeError)message='پەیوەندی بە Google Gemini لەم وەشانەی WebView دا سەرکەوتوو نەبوو؛ لەوانەیە پێویستی بە وەشانی Native بێت.';lastFailedMessage=content;aiStatus=message;toast('پەیوەندی سەرکەوتوو نەبوو؛ دەتوانیت دووبارە هەوڵ بدەیت.');aiMessages.push({role:'assistant',content:'⚠️ '+message});}
  finally{clearTimeout(timeout);aiMessages=aiMessages.slice(-16);try{sessionStorage.setItem('easy_ai_chat',JSON.stringify(aiMessages))}catch(e){}aiPending=false;render();document.getElementById('ai-chat')?.scrollTo({top:100000,behavior:'smooth'})}
 }
 function removeGeminiKey(){geminiApiKey='';if(nativeGeminiAvailable())try{Android.clearGeminiKey()}catch(e){};aiReady=false;aiStatus='کلیلی API لەم ئامێرە سڕایەوە.';try{localStorage.removeItem(GEMINI_STORED_KEY)}catch(e){}render();toast(aiStatus)}
@@ -573,7 +575,7 @@ document.addEventListener('click',e=>{let b=e.target.closest('[data-ai-example]'
 
 function render(scroll=false){header();nav();document.getElementById('main').innerHTML=({home,levels:allLevels,lesson:levelPage,quiz:quizPage,review,ai:aiPage,settings}[page]||home)();if(scroll)window.scrollTo(0,0)}
 function openLevel(n){if(!canEnter(n)){toast('سەرەتا لیڤلی پێشوو تەواو بکە');return}activeLevel=n;wordFilter='';page='lesson';render(true)}
-document.addEventListener('click',function(e){const pageEl=e.target.closest('[data-page]');if(pageEl){stopSpeech();page=pageEl.dataset.page;if(page==='ai')aiLessonContext=null;render(true);return}const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;switch(a){case 'ai-for-lesson':aiLessonContext=Number(el.dataset.level)||activeLevel;page='ai';render(true);break;case 'back-to-lesson':activeLevel=aiLessonContext||activeLevel;page='lesson';render(true);break;case 'enter':openLevel(Number(el.dataset.level));break;case 'speak':speak(el.dataset.text);break;case 'pronounce':startSpeakingPractice(el.dataset.text);break;case 'assess-voice':scoreSpokenAnswer(document.getElementById('voice-transcript-input')?.value||'');break;case 'repeat-voice':speak(el.dataset.text);break;case 'ai-send':sendAiMessage();break;case 'ai-clear':aiMessages=[];try{sessionStorage.removeItem('easy_ai_chat')}catch(e){}render();break;case 'ai-speak':speak(el.dataset.text);break;case 'ai-save':saveAiConfig();break;case 'ai-check':testAiConnection();break;case 'ai-refresh-models':refreshGeminiModels();break;case 'ai-remove-key':removeGeminiKey();break;case 'teacher-check':speak('Hello. My name is your English teacher. A. B. C. One. Two. Three.');break;case 'quiz':buildQuiz(el.dataset.mode);break;case 'answer':answer(el.dataset.answer);break;case 'quiz-next':quizNext();break;case 'retry':buildQuiz(quiz.mode);break;case 'back-level':page='lesson';render(true);break;case 'afterpass':if(quiz.mode==='gate'){page='lesson';render(true)}else if(quiz.mode==='test'&&state.completed[activeLevel]&&activeLevel<30)openLevel(activeLevel+1);else{page='levels';render(true)}break;case 'weekly':weeklyPractice();break;case 'review-practice':mistakePractice();break;case 'reset-confirm':if(confirm('دڵنیایت دەتەوێت هەموو پێشکەوتنەکان بسڕیتەوە؟')){state.completed={};state.mistakes={};state.reviewDone={};state.sessions=0;state.sessionDates=[];save();page='home';render(true)}break;}});
+document.addEventListener('click',function(e){const pageEl=e.target.closest('[data-page]');if(pageEl){stopSpeech();page=pageEl.dataset.page;if(page==='ai')aiLessonContext=null;render(true);return}const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;switch(a){case 'ai-for-lesson':aiLessonContext=Number(el.dataset.level)||activeLevel;page='ai';render(true);break;case 'back-to-lesson':activeLevel=aiLessonContext||activeLevel;page='lesson';render(true);break;case 'enter':openLevel(Number(el.dataset.level));break;case 'speak':speak(el.dataset.text);break;case 'pronounce':startSpeakingPractice(el.dataset.text);break;case 'assess-voice':scoreSpokenAnswer(document.getElementById('voice-transcript-input')?.value||'');break;case 'repeat-voice':speak(el.dataset.text);break;case 'ai-send':sendAiMessage();break;case 'ai-retry':if(lastFailedMessage&&!aiPending){document.getElementById('ai-question').value=lastFailedMessage;if(aiMessages.at(-1)?.content.startsWith('⚠️'))aiMessages.pop();if(aiMessages.at(-1)?.role==='user'&&aiMessages.at(-1)?.content===lastFailedMessage)aiMessages.pop();sendAiMessage();}break;case 'ai-clear':aiMessages=[];try{sessionStorage.removeItem('easy_ai_chat')}catch(e){}render();break;case 'ai-speak':speak(el.dataset.text);break;case 'ai-save':saveAiConfig();break;case 'ai-check':testAiConnection();break;case 'ai-refresh-models':refreshGeminiModels();break;case 'ai-remove-key':removeGeminiKey();break;case 'teacher-check':speak('Hello. My name is your English teacher. A. B. C. One. Two. Three.');break;case 'quiz':buildQuiz(el.dataset.mode);break;case 'answer':answer(el.dataset.answer);break;case 'quiz-next':quizNext();break;case 'retry':buildQuiz(quiz.mode);break;case 'back-level':page='lesson';render(true);break;case 'afterpass':if(quiz.mode==='gate'){page='lesson';render(true)}else if(quiz.mode==='test'&&state.completed[activeLevel]&&activeLevel<30)openLevel(activeLevel+1);else{page='levels';render(true)}break;case 'weekly':weeklyPractice();break;case 'review-practice':mistakePractice();break;case 'reset-confirm':if(confirm('دڵنیایت دەتەوێت هەموو پێشکەوتنەکان بسڕیتەوە؟')){state.completed={};state.mistakes={};state.reviewDone={};state.sessions=0;state.sessionDates=[];save();page='home';render(true)}break;}});
 document.addEventListener('keydown',function(e){if(e.target.id==='ai-question'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAiMessage()}});
 document.addEventListener('input',function(e){if(e.target.id==='voice-transcript-input'&&e.target.value.trim()){scoreSpokenAnswer(e.target.value)}if(e.target.id==='wordsearch'){wordFilter=e.target.value;const current=level(activeLevel);const list=document.getElementById('word-list');if(list)list.innerHTML=wordList(current.items)} });
 document.addEventListener('change',function(e){const s=state.settings;if(e.target.id==='rate'){s.rate=Number(e.target.value);save();toast('خێرایی دەنگ گۆڕدرا')}else if(e.target.id==='gender'){s.gender=e.target.value;save();toast('جۆری دەنگ هەڵبژێردرا')}else if(e.target.id==='reminders'||e.target.id==='time'){s.reminders=document.getElementById('reminders')?.checked??s.reminders;s.time=document.getElementById('time')?.value||s.time;save();reminder();toast('ڕێکخستنەکانی بیرخستنەوە پاشەکەوت کران')}});
