@@ -15,7 +15,7 @@ function onboarding(){
  const hasStored=nativeGeminiKeyPresent()||geminiApiKey.length>=15;
  return `<div class="ee5-setup" role="main" aria-label="پەیوەستکردنی مامۆستای زیرەک">
   <div class="ee5-setup-star">✦</div>
-  <div class="ee5-setup-logo">Easy <em>English</em></div>
+  <div class="ee5-setup-logo">Easy <em>English</em> <small>5.2</small></div>
   <h1>پەیوەستکردنی مامۆستای زیرەک</h1>
   <p>تەنها یەکەم جار کلیلی Google Gemini داخیل بکە، پاشان ڕاستەوخۆ بچۆ ناو وانەکانت.</p>
   <label for="gemini-key">Gemini API Key</label>

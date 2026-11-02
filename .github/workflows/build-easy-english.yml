@@ -74,6 +74,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="easyenglish-api-fixed-v51"
-          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_API_Fixed_v5.1.apk
-          gh release create "$TAG" EasyEnglish_API_Fixed_v5.1.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Easy English 5.1 - Gemini API recovery" --notes "Automatic model discovery with pagination and text-generation filtering; recovery from unavailable models; precise redacted API error messages; native HTTPS transport and request cancellation. Regression checks and Android build run in CI. Device connection with your own key still needs verification. Separate app ID allows installation alongside version 5.0 without removing its data; enter your key again in 5.1. Debug test APK." --latest=false
+          TAG="easyenglish-api-fixed-v52"
+          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_API_Fixed_v5.2.apk
+          gh release create "$TAG" EasyEnglish_API_Fixed_v5.2.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Easy English 5.2 - Exact model selection" --notes "Explicit model choice is never silently replaced, including after 404; exact requested model appears in errors. Stable model discovery preference, persistent list, readable mobile diagnostics. Regression checks and Android build run in CI. Device connection with your own key still needs verification. Separate app ID allows installation alongside older versions without removing its data; enter your key again in 5.2. Debug test APK." --latest=false
