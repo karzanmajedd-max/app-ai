@@ -1,8 +1,8 @@
-name: Build Zikrakan v2.4 Banner Settings APK
+name: Build Zikrakan v2.5 Heads-up Diagnostics APK
 
 on:
   push:
-    branches: [build-zikrakan-v2-4-banner-settings]
+    branches: [build-zikrakan-v2-5-headsup-diagnostics]
   workflow_dispatch:
 
 permissions:
@@ -36,6 +36,9 @@ jobs:
           python3 zikrakan/harden.py
           python3 zikrakan/fix_preview.py
           python3 zikrakan/fix_banner_v24.py
+          python3 zikrakan/fix_heads_up_v25.py
+          grep -q 'notificationDiagnostic()' Zikrakan/app/src/main/java/com/zikr/zikrakan/MainActivity.kt
+          grep -q 'IMPORTANCE_HIGH' Zikrakan/app/src/main/java/com/zikr/zikrakan/Notifier.kt
           grep -q 'zikr_banner_qv_v4' Zikrakan/app/src/main/java/com/zikr/zikrakan/Notifier.kt || true
           python3 - <<'PY'
           from pathlib import Path
@@ -68,13 +71,13 @@ jobs:
             --ks-key-alias zikrakan-release \
             --ks-pass pass:temporaryBuildKeyPassword123 \
             --key-pass pass:temporaryBuildKeyPassword123 \
-            --out Zikrakan-v2.4-Banner-Fixed.apk /tmp/zikrakan-aligned.apk
-          "$BT/apksigner" verify --verbose --print-certs Zikrakan-v2.4-Banner-Fixed.apk
-          "$BT/aapt" d permissions Zikrakan-v2.4-Banner-Fixed.apk | tee permissions.txt
+            --out Zikrakan-v2.5-HeadUp-Fixed.apk /tmp/zikrakan-aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs Zikrakan-v2.5-HeadUp-Fixed.apk
+          "$BT/aapt" d permissions Zikrakan-v2.5-HeadUp-Fixed.apk | tee permissions.txt
           ! grep -E 'SYSTEM_ALERT_WINDOW|REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' permissions.txt
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: Zikrakan-v2.4-Banner-Fixed-APK
-          path: Zikrakan-v2.4-Banner-Fixed.apk
+          name: Zikrakan-v2.5-HeadUp-Fixed-APK
+          path: Zikrakan-v2.5-HeadUp-Fixed.apk
           if-no-files-found: error
