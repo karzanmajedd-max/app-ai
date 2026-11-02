@@ -74,6 +74,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="easyenglish-api-fixed-v53"
-          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_API_Fixed_v5.3.apk
-          gh release create "$TAG" EasyEnglish_API_Fixed_v5.3.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Easy English 5.3 - Current Gemini model picker" --notes "Gemini 3.8 Flash is selectable from first launch and selected by default. Adds authenticated model-list refresh without generation. Keeps modern model options after refresh and excludes media models such as Omni from chat discovery. Explicit model selection remains strict. Regression checks and Android build run in CI. Device connection with your own key still needs verification. Separate app ID allows installation alongside older versions without removing its data; enter your key again in 5.3. Debug test APK." --latest=false
+          TAG="easyenglish-api-fixed-v54"
+          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_API_Fixed_v5.4.apk
+          gh release create "$TAG" EasyEnglish_API_Fixed_v5.4.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Easy English 5.4 - Clean teacher chat and keyboard layout" --notes "Compact teacher chat with scrollable messages and a persistent composer. Android system/IME insets resize the WebView container and are consumed to avoid double padding. Visual viewport resizing keeps the composer visible. Physical keyboard validation still required. Regression checks and Android build run in CI. Device connection with your own key still needs verification. Separate app ID allows installation alongside older versions without removing its data; enter your key again in 5.4. Debug test APK." --latest=false

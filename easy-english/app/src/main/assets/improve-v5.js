@@ -15,7 +15,7 @@ function onboarding(){
  const hasStored=nativeGeminiKeyPresent()||geminiApiKey.length>=15;
  return `<div class="ee5-setup" role="main" aria-label="پەیوەستکردنی مامۆستای زیرەک">
   <div class="ee5-setup-star">✦</div>
-  <div class="ee5-setup-logo">Easy <em>English</em> <small>5.3</small></div>
+  <div class="ee5-setup-logo">Easy <em>English</em> <small>5.4</small></div>
   <h1>پەیوەستکردنی مامۆستای زیرەک</h1>
   <p>تەنها یەکەم جار کلیلی Google Gemini داخیل بکە، پاشان ڕاستەوخۆ بچۆ ناو وانەکانت.</p>
   <label for="gemini-key">Gemini API Key</label>
@@ -31,6 +31,7 @@ function onboarding(){
 }
 function showScreen(scroll){
  const gate=!verified();
+ document.body.classList.toggle('ee-chat-mode',!gate&&page==='ai');
  document.body.classList.toggle('ee5-gated',gate);
  if(gate){
   const t=document.getElementById('top');if(t)t.innerHTML='';
@@ -63,16 +64,17 @@ settings=function(){
  return html.replace('<button class="softbtn" data-action="reset-confirm">',
  '<button class="softbtn" style="display:block;margin:12px 0;min-height:47px" data-action="ee5-change-key">گۆڕینی کلیلی پەیوەندی مامۆستا</button><button class="softbtn" data-action="reset-confirm">');
 };
+let chatDraft='';
+function fitChat(){const v=window.visualViewport;document.documentElement.style.setProperty('--chat-height',(v?v.height:window.innerHeight)+'px');}
+window.visualViewport?.addEventListener('resize',fitChat);window.addEventListener('resize',fitChat);fitChat();
+document.addEventListener('input',e=>{if(e.target.id==='ai-question')chatDraft=e.target.value});
 aiPage=function(){
- let html=oldAiPage();
- html=html.replace(/<details class="ai3-config"[\s\S]*?<\/details>/,'');
- html=html.replace(/<p class="ai3-footer-note">[\s\S]*?<\/p>/,'');
- html=html.replace('GOOGLE GEMINI · AI TEACHER','EASY ENGLISH · AI TEACHER');
- html=html.replace('فێربوونی ئینگلیزی لەگەڵ Gemini','فێربوونی ئینگلیزی بە گفتوگۆ');
- html=html.replace('پەیوەندی پشتڕاستکراوە','ئامادەی گفتوگۆیە').replace('کلیل دانراوە؛ پەیوەندی تاقی بکەرەوە','ئامادەی گفتوگۆیە').replace('پەیوەندی هێشتا نەکراوە','ئامادەی گفتوگۆیە');
- html=html.replace('<button class="ai3-send"','<button class="ai5-voice" type="button" data-action="ai5-mic" aria-label="قسەکردن بە مایکرۆفۆن">🎙</button><button class="ai3-send"');
- html=html.replace('<div class="ai3-compose-foot">','<div id="ai5-voice-status" class="ai5-voice-status" role="status">🎙 بۆ قسەکردن بە ئینگلیزی دوگمەی مایکرۆفۆن دابگرە.</div><div class="ai3-compose-foot">');
- return html;
+ if(aiPending)chatDraft='';
+ const messages=aiMessages.map(m=>`<article class="ee-message ${m.role==='user'?'from-user':'from-teacher'}"><small>${m.role==='user'?'تۆ':'مامۆستا'}</small><div dir="auto">${esc(m.content)}</div>${m.role==='assistant'&&!m.content.startsWith('⚠️')?`<button class="softbtn" data-action="ai-speak" data-text="${esc(m.content)}">♫ گوێگرتن</button>`:''}</article>`).join('');
+ requestAnimationFrame(()=>{fitChat();const c=document.getElementById('ai-chat');if(c)c.scrollTop=c.scrollHeight;});
+ return `<section class="ee-chat"><header class="ee-chat-head"><button class="softbtn" data-page="home">← ماڵەوە</button><div><strong>مامۆستای ئینگلیزی</strong><small>لیڤلی ${Math.min(aiLessonContext||nextLevel(),30)} / 30</small></div><button class="softbtn" data-action="ai-clear">پاککردنەوە</button></header>
+ <div id="ai-chat" class="ee-thread" role="log" aria-live="polite">${messages||'<div class="ee-chat-empty"><h3>ڕاهێنان لەگەڵ مامۆستا</h3><p>پرسیارەکەت بنووسە یان مایکرۆفۆن بەکاربهێنە.</p><button class="softbtn" data-ai-example="Ask me one simple beginner English question and explain it in Sorani Kurdish.">ڕاهێنان دەست پێ بکە</button></div>'}${aiPending?'<p class="ee-wait" role="status">مامۆستا وەڵام دەداتەوە…</p>':''}</div>
+ <div class="ee-composer"><div id="ai5-voice-status" role="status"></div><div class="ee-compose-row"><button class="ee-mic" type="button" data-action="ai5-mic" aria-label="قسەکردن" ${aiPending?'disabled':''}>🎙</button><textarea id="ai-question" dir="auto" rows="2" placeholder="لێرە بنووسە…" aria-label="نامە بۆ مامۆستا">${esc(chatDraft)}</textarea><button class="ee-send" type="button" data-action="ai-send" aria-label="ناردن" ${aiPending?'disabled':''}>➤</button></div></div></section>`;
 };
 levelPage=function(){
  let html=oldLevelPage();
