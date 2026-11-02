@@ -74,6 +74,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="easyenglish-api-fixed-v52"
-          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_API_Fixed_v5.2.apk
-          gh release create "$TAG" EasyEnglish_API_Fixed_v5.2.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Easy English 5.2 - Exact model selection" --notes "Explicit model choice is never silently replaced, including after 404; exact requested model appears in errors. Stable model discovery preference, persistent list, readable mobile diagnostics. Regression checks and Android build run in CI. Device connection with your own key still needs verification. Separate app ID allows installation alongside older versions without removing its data; enter your key again in 5.2. Debug test APK." --latest=false
+          TAG="easyenglish-api-fixed-v53"
+          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_API_Fixed_v5.3.apk
+          gh release create "$TAG" EasyEnglish_API_Fixed_v5.3.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Easy English 5.3 - Current Gemini model picker" --notes "Gemini 3.8 Flash is selectable from first launch and selected by default. Adds authenticated model-list refresh without generation. Keeps modern model options after refresh and excludes media models such as Omni from chat discovery. Explicit model selection remains strict. Regression checks and Android build run in CI. Device connection with your own key still needs verification. Separate app ID allows installation alongside older versions without removing its data; enter your key again in 5.3. Debug test APK." --latest=false

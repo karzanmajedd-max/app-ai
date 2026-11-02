@@ -15,13 +15,14 @@ function onboarding(){
  const hasStored=nativeGeminiKeyPresent()||geminiApiKey.length>=15;
  return `<div class="ee5-setup" role="main" aria-label="پەیوەستکردنی مامۆستای زیرەک">
   <div class="ee5-setup-star">✦</div>
-  <div class="ee5-setup-logo">Easy <em>English</em> <small>5.2</small></div>
+  <div class="ee5-setup-logo">Easy <em>English</em> <small>5.3</small></div>
   <h1>پەیوەستکردنی مامۆستای زیرەک</h1>
   <p>تەنها یەکەم جار کلیلی Google Gemini داخیل بکە، پاشان ڕاستەوخۆ بچۆ ناو وانەکانت.</p>
   <label for="gemini-key">Gemini API Key</label>
   <input id="gemini-key" type="password" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${hasStored?'کلیلی پێشوو پارێزراوە، بۆ تاقیکردنەوە بەردەوام بە':'Paste Gemini API Key'}">
   <label for="gemini-model">مۆدێلی مامۆستا</label>
   <select id="gemini-model" dir="ltr">${GEMINI_MODELS.map(m=>`<option value="${aiEsc(m)}" ${aiPrefs.model===m?'selected':''}>${m==='auto'?'خۆکار — دۆزینەوەی مۆدێلی بەردەست':aiEsc(m)}</option>`).join('')}</select>
+  <button type="button" class="softbtn" data-action="ai-refresh-models" ${aiPending?'disabled':''}>نوێکردنەوەی لیستی مۆدێلەکان</button>
   <input id="gemini-remember" type="checkbox" checked style="display:none" aria-hidden="true">
   <button type="button" class="btn" data-action="ai-check" ${aiPending?'disabled':''}>${aiPending?'پەیوەندی تاقی دەکرێتەوە…':'پەیوەستبوون و چوونە ژوورەوە'}</button>
   ${aiStatus?'<div class="ee5-status" role="status">'+esc(aiStatus)+'</div>':''}

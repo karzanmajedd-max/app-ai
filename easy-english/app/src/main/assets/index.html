@@ -376,10 +376,12 @@ function mistakePractice(){const pool=[];for(const [n,arr] of Object.entries(sta
 // Production deployments should replace the personal direct-request mode with a server proxy or Firebase AI Logic + App Check.
 const GEMINI_PREFS_KEY='easyenglish_gemini_preferences_v1';
 const GEMINI_STORED_KEY='easyenglish_gemini_personal_key_v1';
-const GEMINI_MODELS=['auto','gemini-2.5-flash-lite','gemini-2.5-flash'];
+const GEMINI_SEED_MODELS=['gemini-3.8-flash','gemini-3.5-flash-lite','gemini-3.6-flash'];
+const GEMINI_MODELS=['auto',...GEMINI_SEED_MODELS];
+function isGeminiTextModel(m){return /^gemini-[A-Za-z0-9._-]{1,150}$/.test(m)&&!/image|tts|audio|live|robotics|computer-use|deep-research|omni|nano-banana|transcribe|music|video/i.test(m)}
 let discoveredModels=[];
-try{const cached=JSON.parse(localStorage.getItem('easyenglish_model_cache_v2')||'[]');for(const m of cached)if(/^gemini-[A-Za-z0-9._-]{1,150}$/.test(m)&&!GEMINI_MODELS.includes(m))GEMINI_MODELS.push(m)}catch(e){}
-let aiPrefs={model:GEMINI_MODELS[0],remember:false};
+try{const cached=JSON.parse(localStorage.getItem('easyenglish_model_cache_v2')||'[]');for(const m of cached)if(isGeminiTextModel(m)&&!GEMINI_MODELS.includes(m))GEMINI_MODELS.push(m)}catch(e){}
+let aiPrefs={model:'gemini-3.8-flash',remember:false};
 try{aiPrefs={...aiPrefs,...JSON.parse(localStorage.getItem(GEMINI_PREFS_KEY)||'{}')}}catch(e){}
 if(aiPrefs.model!=='auto'&&!/^gemini-[A-Za-z0-9._-]{1,150}$/.test(aiPrefs.model))aiPrefs.model='auto';
 if(!GEMINI_MODELS.includes(aiPrefs.model))GEMINI_MODELS.push(aiPrefs.model);
@@ -495,14 +497,14 @@ async function discoverGeminiModels(signal){
   const data=nativeGeminiAvailable()?await nativeGeminiRequest('list',[token],signal):await geminiHttp('models?pageSize=1000'+(token?'&pageToken='+encodeURIComponent(token):''),null,signal);
   for(const m of data.models||[]){
    const name=String(m.name||'').replace(/^models\//,'');
-   if(/^gemini-[A-Za-z0-9._-]{1,150}$/.test(name)&&(m.supportedGenerationMethods||[]).includes('generateContent')&&!/image|tts|audio|live|robotics|computer-use|deep-research/i.test(name))models.push(name);
+   if(isGeminiTextModel(name)&&(m.supportedGenerationMethods||[]).includes('generateContent'))models.push(name);
   }
   token=String(data.nextPageToken||'');if(token&&tokens.has(token))throw new Error('هەڵەی لیستی مۆدێلەکان');tokens.add(token);
  }while(token);
- const priority=m=>m==='gemini-2.5-flash-lite'?0:m==='gemini-2.5-flash'?1:/flash/.test(m)&&!/preview|exp|omni/.test(m)?2:3;
+ const priority=m=>m==='gemini-3.8-flash'?0:m==='gemini-3.5-flash-lite'?1:/flash/.test(m)&&!/preview|exp/.test(m)?2:3;
  discoveredModels=[...new Set(models)].sort((a,b)=>priority(a)-priority(b)||b.localeCompare(a,undefined,{numeric:true}));
  if(!discoveredModels.length)throw new Error('هیچ مۆدێلی گفتوگۆ بۆ ئەم کلیلە بەردەست نییە.');
- GEMINI_MODELS.splice(0,GEMINI_MODELS.length,'auto',...new Set([...discoveredModels,...(aiPrefs.model!=='auto'?[aiPrefs.model]:[])]));
+ GEMINI_MODELS.splice(0,GEMINI_MODELS.length,'auto',...new Set([...GEMINI_SEED_MODELS,...discoveredModels,...(aiPrefs.model!=='auto'?[aiPrefs.model]:[])]));
  try{localStorage.setItem('easyenglish_model_cache_v2',JSON.stringify(discoveredModels))}catch(e){}
  return discoveredModels;
 }
@@ -527,6 +529,17 @@ async function geminiGenerate(contents,signal){
   }
  }
  throw lastError;
+}
+async function refreshGeminiModels(){
+ if(aiPending)return;
+ if(!saveAiConfig(true)){aiStatus='سەرەتا کلیلی API داخیل بکە.';toast(aiStatus);render();return;}
+ aiPending=true;aiStatus='لیستی مۆدێلەکان لە Google نوێ دەکرێتەوە…';render();
+ const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),60000);
+ try{
+  await discoverGeminiModels(ctrl.signal);
+  aiStatus='لیستەکە نوێ کرایەوە. مۆدێلێک هەڵبژێرە و پەیوەندی تاقی بکەرەوە.';
+ }catch(e){aiStatus=e?.name==='AbortError'?'کاتی نوێکردنەوە تەواو بوو؛ دووبارە هەوڵ بدە.':String(e?.message||'لیستی مۆدێلەکان نوێ نەکرایەوە.');}
+ finally{clearTimeout(timer);aiPending=false;render();}
 }
 async function testAiConnection(){
  if(aiPending)return;
@@ -560,7 +573,7 @@ document.addEventListener('click',e=>{let b=e.target.closest('[data-ai-example]'
 
 function render(scroll=false){header();nav();document.getElementById('main').innerHTML=({home,levels:allLevels,lesson:levelPage,quiz:quizPage,review,ai:aiPage,settings}[page]||home)();if(scroll)window.scrollTo(0,0)}
 function openLevel(n){if(!canEnter(n)){toast('سەرەتا لیڤلی پێشوو تەواو بکە');return}activeLevel=n;wordFilter='';page='lesson';render(true)}
-document.addEventListener('click',function(e){const pageEl=e.target.closest('[data-page]');if(pageEl){stopSpeech();page=pageEl.dataset.page;if(page==='ai')aiLessonContext=null;render(true);return}const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;switch(a){case 'ai-for-lesson':aiLessonContext=Number(el.dataset.level)||activeLevel;page='ai';render(true);break;case 'back-to-lesson':activeLevel=aiLessonContext||activeLevel;page='lesson';render(true);break;case 'enter':openLevel(Number(el.dataset.level));break;case 'speak':speak(el.dataset.text);break;case 'pronounce':startSpeakingPractice(el.dataset.text);break;case 'assess-voice':scoreSpokenAnswer(document.getElementById('voice-transcript-input')?.value||'');break;case 'repeat-voice':speak(el.dataset.text);break;case 'ai-send':sendAiMessage();break;case 'ai-clear':aiMessages=[];try{sessionStorage.removeItem('easy_ai_chat')}catch(e){}render();break;case 'ai-speak':speak(el.dataset.text);break;case 'ai-save':saveAiConfig();break;case 'ai-check':testAiConnection();break;case 'ai-remove-key':removeGeminiKey();break;case 'teacher-check':speak('Hello. My name is your English teacher. A. B. C. One. Two. Three.');break;case 'quiz':buildQuiz(el.dataset.mode);break;case 'answer':answer(el.dataset.answer);break;case 'quiz-next':quizNext();break;case 'retry':buildQuiz(quiz.mode);break;case 'back-level':page='lesson';render(true);break;case 'afterpass':if(quiz.mode==='gate'){page='lesson';render(true)}else if(quiz.mode==='test'&&state.completed[activeLevel]&&activeLevel<30)openLevel(activeLevel+1);else{page='levels';render(true)}break;case 'weekly':weeklyPractice();break;case 'review-practice':mistakePractice();break;case 'reset-confirm':if(confirm('دڵنیایت دەتەوێت هەموو پێشکەوتنەکان بسڕیتەوە؟')){state.completed={};state.mistakes={};state.reviewDone={};state.sessions=0;state.sessionDates=[];save();page='home';render(true)}break;}});
+document.addEventListener('click',function(e){const pageEl=e.target.closest('[data-page]');if(pageEl){stopSpeech();page=pageEl.dataset.page;if(page==='ai')aiLessonContext=null;render(true);return}const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action;switch(a){case 'ai-for-lesson':aiLessonContext=Number(el.dataset.level)||activeLevel;page='ai';render(true);break;case 'back-to-lesson':activeLevel=aiLessonContext||activeLevel;page='lesson';render(true);break;case 'enter':openLevel(Number(el.dataset.level));break;case 'speak':speak(el.dataset.text);break;case 'pronounce':startSpeakingPractice(el.dataset.text);break;case 'assess-voice':scoreSpokenAnswer(document.getElementById('voice-transcript-input')?.value||'');break;case 'repeat-voice':speak(el.dataset.text);break;case 'ai-send':sendAiMessage();break;case 'ai-clear':aiMessages=[];try{sessionStorage.removeItem('easy_ai_chat')}catch(e){}render();break;case 'ai-speak':speak(el.dataset.text);break;case 'ai-save':saveAiConfig();break;case 'ai-check':testAiConnection();break;case 'ai-refresh-models':refreshGeminiModels();break;case 'ai-remove-key':removeGeminiKey();break;case 'teacher-check':speak('Hello. My name is your English teacher. A. B. C. One. Two. Three.');break;case 'quiz':buildQuiz(el.dataset.mode);break;case 'answer':answer(el.dataset.answer);break;case 'quiz-next':quizNext();break;case 'retry':buildQuiz(quiz.mode);break;case 'back-level':page='lesson';render(true);break;case 'afterpass':if(quiz.mode==='gate'){page='lesson';render(true)}else if(quiz.mode==='test'&&state.completed[activeLevel]&&activeLevel<30)openLevel(activeLevel+1);else{page='levels';render(true)}break;case 'weekly':weeklyPractice();break;case 'review-practice':mistakePractice();break;case 'reset-confirm':if(confirm('دڵنیایت دەتەوێت هەموو پێشکەوتنەکان بسڕیتەوە؟')){state.completed={};state.mistakes={};state.reviewDone={};state.sessions=0;state.sessionDates=[];save();page='home';render(true)}break;}});
 document.addEventListener('keydown',function(e){if(e.target.id==='ai-question'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAiMessage()}});
 document.addEventListener('input',function(e){if(e.target.id==='voice-transcript-input'&&e.target.value.trim()){scoreSpokenAnswer(e.target.value)}if(e.target.id==='wordsearch'){wordFilter=e.target.value;const current=level(activeLevel);const list=document.getElementById('word-list');if(list)list.innerHTML=wordList(current.items)} });
 document.addEventListener('change',function(e){const s=state.settings;if(e.target.id==='rate'){s.rate=Number(e.target.value);save();toast('خێرایی دەنگ گۆڕدرا')}else if(e.target.id==='gender'){s.gender=e.target.value;save();toast('جۆری دەنگ هەڵبژێردرا')}else if(e.target.id==='reminders'||e.target.id==='time'){s.reminders=document.getElementById('reminders')?.checked??s.reminders;s.time=document.getElementById('time')?.value||s.time;save();reminder();toast('ڕێکخستنەکانی بیرخستنەوە پاشەکەوت کران')}});

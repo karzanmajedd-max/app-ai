@@ -1,6 +1,6 @@
 plugins { id 'com.android.application' }
 android { namespace 'com.didar.easyenglish'; compileSdk 35
- defaultConfig { applicationId 'com.didar.easyenglish.apifixv52'; minSdk 26; targetSdk 35; versionCode 52; versionName '5.2.0' }
+ defaultConfig { applicationId 'com.didar.easyenglish.apifixv53'; minSdk 26; targetSdk 35; versionCode 53; versionName '5.3.0' }
  buildTypes { release { minifyEnabled false } }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
