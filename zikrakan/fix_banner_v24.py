@@ -97,10 +97,10 @@ s=s.replace("const DEFAULT = { enabled:true","const DEFAULT = { enabled:true,ban
 old='<strong>نۆتیکەیشنەکان</strong><small>چالاککردن / ناچالاککردن</small>'
 assert old in s
 s=s.replace(old,'<strong>چالاککردنی نۆتیفیکەیشن</strong><small>ناردنی زیکرەکان لە کاتە دیاریکراوەکاندا</small>')
-old='<input type="checkbox" class="toggle" id="enabled" ${prefs.enabled?\'checked\':\'\'}</div><div class="row"><div><strong>دەنگ</strong>'
+old='<input type="checkbox" class="toggle" id="enabled" ${prefs.enabled?\'checked\':\'\'}></div><div class="row"><div><strong>دەنگ</strong>'
 # The template uses </div> immediately after the checkbox, not a closing input.
 if old not in s:
-    old='<input type="checkbox" class="toggle" id="enabled" ${prefs.enabled?\'checked\':\'\'}</div><div class="row"><div><strong>دەنگ</strong>'
+    old='<input type="checkbox" class="toggle" id="enabled" ${prefs.enabled?\'checked\':\'\'}></div><div class="row"><div><strong>دەنگ</strong>'
 assert old in s, "Cannot locate notification toggle section"
 new='''<input type="checkbox" class="toggle" id="enabled" ${prefs.enabled?'checked':''}></div><div class="row"><div><strong>چالاککردنی بانەر</strong><small>بانەری سەرشاشە لە کاتی بەکارهێنانی ئەپەکانی دیکە</small></div><input type="checkbox" class="toggle" id="banner" ${prefs.banner?'checked':''}></div><div class="systemActions"><button type="button" id="systemNotifications" class="outlineBtn">⚙ ڕێکخستنی نۆتیفیکەیشن لە مۆبایل</button><button type="button" id="systemBanner" class="outlineBtn">⚙ ڕێکخستنی بانەری سەرشاشە</button></div><p class="note">ئەگەر بانەر نایەتە سەر شاشە، لە ڕێکخستنەکانی مۆبایل Floating notifications / Pop-up notifications چالاک بکە. دۆخی بێدەنگ یان Do Not Disturb دەکرێت بانەر ڕابگرێت.</p><div class="row"><div><strong>دەنگ</strong>'''
 s=s.replace(old,new)
