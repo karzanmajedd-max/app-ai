@@ -376,7 +376,8 @@ function mistakePractice(){const pool=[];for(const [n,arr] of Object.entries(sta
 // Production deployments should replace the personal direct-request mode with a server proxy or Firebase AI Logic + App Check.
 const GEMINI_PREFS_KEY='easyenglish_gemini_preferences_v1';
 const GEMINI_STORED_KEY='easyenglish_gemini_personal_key_v1';
-const GEMINI_MODELS=['gemini-2.5-flash-lite','gemini-2.5-flash'];
+const GEMINI_MODELS=['auto'];
+let discoveredModels=[];
 let aiPrefs={model:GEMINI_MODELS[0],remember:false};
 try{aiPrefs={...aiPrefs,...JSON.parse(localStorage.getItem(GEMINI_PREFS_KEY)||'{}')}}catch(e){}
 if(!GEMINI_MODELS.includes(aiPrefs.model))aiPrefs.model=GEMINI_MODELS[0];
@@ -454,53 +455,75 @@ function saveAiConfig(quiet=false){
  return !!geminiApiKey||nativeGeminiKeyPresent();
 }
 function geminiFailure(code,apiError){
- const reason=String(apiError?.message||'');
- if(code===400)return 'داواکاری نادروستە، یان مۆدێلەکە بۆ هەژمارەکەت نەکراوەتەوە.';
- if(code===401||code===403)return 'کلیلی API ڕەتکرایەوە یان ڕێگەی بەکارهێنانی Gemini API نییە. لە Google AI Studio بپشکنە.';
- if(code===404)return 'مۆدێلی هەڵبژێردراو بەردەست نییە. مۆدێلێکی دیکە هەڵبژێرە.';
- if(code===429)return 'سنووری بەکارهێنانی بەخۆڕایی یان Quota پڕبووە. دواتر تاقی بکەرەوە.';
- if(code===503||code>=500)return 'خزمەتگوزاری Gemini کاتێک بەردەست نییە. دواتر تاقی بکەرەوە.';
- return 'پەیوەندی Gemini سەرکەوتوو نەبوو ('+code+'). '+reason.slice(0,110);
+ const detail=String(apiError?.message||'').replace(/AIza[A-Za-z0-9_-]+/g,'[REDACTED]').slice(0,700);
+ const messages={400:'داواکاری ڕەتکرایەوە.',401:'کلیلی API پشتڕاست نەکرایەوە.',403:'مۆڵەتی بەکارهێنانی API نییە.',404:'مۆدێلەکە بەردەست نییە.',429:'سنووری بەکارهێنان یان Quota پڕبووە.',503:'خزمەتگوزاری کاتێک بەردەست نییە.'};
+ return (messages[code]||'پەیوەندی سەرکەوتوو نەبوو.')+' (HTTP '+code+')'+(detail?' — '+detail:'');
 }
+function geminiError(code,error){const e=new Error(geminiFailure(code,error));e.status=Number(code);return e;}
 const EASY_GEMINI_SYSTEM=`You are Easy English, a concise, supportive and practical English teacher for an absolute beginner whose native language is Sorani Kurdish. Never greet the student or use filler. Start with the answer or lesson immediately. The curriculum has exactly 30 levels. Level 1 covers all English A-Z uppercase and lowercase letters together; levels 2-30 teach basic vocabulary and phrases progressively. After each very short English explanation give an accurate Sorani Kurdish explanation (Arabic-based Sorani script). Ask only one simple question per turn, correct mistakes, review past errors, and keep the response to 130 words or fewer. The student prefers slow speech; produce short, simple English sentences that TTS can read slowly. Do not pretend to have listened to audio or evaluated pronunciation; text chat only.`;
 let geminiCallId=0;
 const geminiCallbacks=new Map();
 window.easyEnglishGeminiNativeResult=function(id,ok,payload){
  const cb=geminiCallbacks.get(id);if(!cb)return;
- geminiCallbacks.delete(id);clearTimeout(cb.timer);
+ geminiCallbacks.delete(id);clearTimeout(cb.timer);cb.cleanup();
  if(ok){try{cb.resolve(JSON.parse(payload))}catch(e){cb.reject(new Error('هەڵەی خوێندنەوەی وەڵامی Gemini'))}}
- else cb.reject(new Error(String(payload||'هەڵەی پەیوەندی')));
+ else {let data;try{data=JSON.parse(payload)}catch(e){}
+  cb.reject(data?.httpStatus?geminiError(data.httpStatus,data.error):new Error(String(payload||'هەڵەی پەیوەندی')));}
 };
-async function geminiGenerate(contents,signal){
- const model=aiPrefs.model;
- const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent';
- const requestBody=JSON.stringify({
-   systemInstruction:{parts:[{text:EASY_GEMINI_SYSTEM}]},contents,
-   generationConfig:{maxOutputTokens:550,temperature:0.45}
+function nativeGeminiRequest(method,args,signal){
+ return new Promise((resolve,reject)=>{
+  if(signal?.aborted){reject(new DOMException('Aborted','AbortError'));return;}
+  const id='gemini'+(++geminiCallId);
+  const cancel=()=>{const cb=geminiCallbacks.get(id);if(!cb)return;geminiCallbacks.delete(id);clearTimeout(cb.timer);cb.cleanup();reject(new DOMException('Aborted','AbortError'));};
+  const cleanup=()=>signal?.removeEventListener('abort',cancel);
+  const timer=setTimeout(()=>{geminiCallbacks.delete(id);cleanup();reject(new Error('کاتی پەیوەندی تەواو بوو'))},35000);
+  geminiCallbacks.set(id,{resolve,reject,timer,cleanup});signal?.addEventListener('abort',cancel,{once:true});
+  try{if(method==='list')Android.geminiListModels(id,args[0]);else Android.geminiGenerate(args[0],id,args[1]);}
+  catch(e){geminiCallbacks.delete(id);clearTimeout(timer);cleanup();reject(e);}
  });
- let body;
- if(nativeGeminiAvailable()){
-   const id='gemini'+(++geminiCallId);
-   body=await new Promise((resolve,reject)=>{
-     const timer=setTimeout(()=>{geminiCallbacks.delete(id);reject(new Error('کاتی پەیوەندی تەواو بوو'))},35000);
-     geminiCallbacks.set(id,{resolve,reject,timer});
-     try{Android.geminiGenerate(model,id,requestBody)}catch(e){clearTimeout(timer);geminiCallbacks.delete(id);reject(e)}
-   });
- } else {
-   const r=await fetch(url,{method:'POST',signal,headers:{'Content-Type':'application/json','x-goog-api-key':geminiApiKey},body:requestBody});
-   body=await r.json().catch(()=>({}));
-   if(!r.ok)throw new Error(geminiFailure(r.status,body.error));
+}
+async function geminiHttp(path,body,signal){
+ const r=await fetch('https://generativelanguage.googleapis.com/v1beta/'+path,{method:body?'POST':'GET',signal,headers:{'Content-Type':'application/json','x-goog-api-key':geminiApiKey},...(body?{body}:{})});
+ const data=await r.json().catch(()=>({}));if(!r.ok)throw geminiError(r.status,data.error);return data;
+}
+async function discoverGeminiModels(signal){
+ const models=[];let token='';const tokens=new Set();
+ do{
+  const data=nativeGeminiAvailable()?await nativeGeminiRequest('list',[token],signal):await geminiHttp('models?pageSize=1000'+(token?'&pageToken='+encodeURIComponent(token):''),null,signal);
+  for(const m of data.models||[]){
+   const name=String(m.name||'').replace(/^models\//,'');
+   if(/^gemini-[A-Za-z0-9._-]{1,150}$/.test(name)&&(m.supportedGenerationMethods||[]).includes('generateContent')&&!/image|tts|audio|live|robotics|computer-use|deep-research/i.test(name))models.push(name);
+  }
+  token=String(data.nextPageToken||'');if(token&&tokens.has(token))throw new Error('هەڵەی لیستی مۆدێلەکان');tokens.add(token);
+ }while(token);
+ discoveredModels=[...new Set(models)].sort((a,b)=>Number(/flash/.test(b))-Number(/flash/.test(a))||Number(/preview|exp/.test(a))-Number(/preview|exp/.test(b))||b.localeCompare(a,undefined,{numeric:true}));
+ if(!discoveredModels.length)throw new Error('هیچ مۆدێلی گفتوگۆ بۆ ئەم کلیلە بەردەست نییە.');
+ GEMINI_MODELS.splice(0,GEMINI_MODELS.length,'auto',...discoveredModels);
+ return discoveredModels;
+}
+async function geminiGenerate(contents,signal){
+ if(!discoveredModels.length)await discoverGeminiModels(signal);
+ const candidates=[...new Set([...(discoveredModels.includes(aiPrefs.model)?[aiPrefs.model]:[]),...discoveredModels])].slice(0,4);
+ const requestBody=JSON.stringify({systemInstruction:{parts:[{text:EASY_GEMINI_SYSTEM}]},contents,generationConfig:{maxOutputTokens:2048,temperature:0.45}});
+ let lastError;
+ for(const model of candidates){
+  try{
+   const body=nativeGeminiAvailable()?await nativeGeminiRequest('generate',[model,requestBody],signal):await geminiHttp('models/'+encodeURIComponent(model)+':generateContent',requestBody,signal);
+   const text=(body.candidates||[]).flatMap(c=>c.content?.parts||[]).filter(p=>typeof p.text==='string'&&!p.thought).map(p=>p.text).join('\n').trim();
+   if(!text)throw new Error('Gemini وەڵامی نووسراوی نەدا. '+String(body.promptFeedback?.blockReason||body.candidates?.[0]?.finishReason||''));
+   aiPrefs.model=model;try{localStorage.setItem(GEMINI_PREFS_KEY,JSON.stringify(aiPrefs))}catch(e){}
+   return text.slice(0,1800);
+  }catch(e){lastError=e;if(e.status!==404)throw e;}
  }
- const text=(body.candidates||[]).flatMap(c=>(c.content&&c.content.parts)||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\n').trim();
- if(!text)throw new Error('Gemini وەڵامی نووسراوی نەدا. پرسیارەکەت بە شێوەیەکی دیکە دووبارە بکەوە.');
- return text.slice(0,1800);
+ throw lastError;
 }
 async function testAiConnection(){
  if(aiPending)return;
  if(!saveAiConfig(true)){aiStatus='سەرەتا Gemini API Key بنووسە.';toast(aiStatus);render();return}
  aiPending=true;aiStatus='پەیوەندی بە Gemini تاقی دەکرێتەوە…';render();
- const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),30000);
+ const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),120000);
  try{
+   discoveredModels=[];
    const result=await geminiGenerate([{role:'user',parts:[{text:'Reply only with the English word OK.'}]}],ctrl.signal);
    aiReady=!!result;aiStatus='✅ Gemini پەیوەست بوو. ئێستا پرسیار بکە.';
  }catch(e){aiReady=false;aiStatus=e?.name==='AbortError'?'کاتی پەیوەندی تەواو بوو؛ ئینتەرنێت بپشکنە.':String(e?.message||'هەڵەی پەیوەندی');if(e instanceof TypeError)aiStatus='پەیوەندی HTTPS نەکرا. ئینتەرنێت یان سنووری WebView/CORS بپشکنە.';}
@@ -514,7 +537,7 @@ async function sendAiMessage(){
  const prior=aiMessages.slice(-10).map(x=>({role:x.role==='assistant'?'model':'user',parts:[{text:x.content.slice(0,750)}]}));
  aiMessages.push({role:'user',content});aiMessages=aiMessages.slice(-16);
  try{sessionStorage.setItem('easy_ai_chat',JSON.stringify(aiMessages))}catch(e){}aiPending=true;render();
- const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),30000);
+ const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),120000);
  try{
    const response=await geminiGenerate([...prior,{role:'user',parts:[{text:`Current level: ${lv.number}/30. Topic: ${lv.enTitle||lv.title}. Lesson vocabulary with Sorani meanings: ${lv.items.slice(0,18).map(x=>x.en+" = "+x.ku).join("; ")}. Keep teaching beginner English from this lesson, ask one short question at a time and explain the meaning in Sorani Kurdish. Student message: ${content}`}]}],ctrl.signal);
    aiMessages.push({role:'assistant',content:response});aiReady=true;

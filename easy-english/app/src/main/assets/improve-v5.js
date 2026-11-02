@@ -7,14 +7,6 @@ const oldRender=render,oldAiPage=aiPage,oldSettings=settings,oldLevelPage=levelP
 const oldConnectionTest=testAiConnection,oldSaveAiConfig=saveAiConfig,oldRemoveKey=removeGeminiKey;
 const oldNativeVoice=window.easyEnglishOnNativeSpeech;
 const oldNativeGeminiResult=window.easyEnglishGeminiNativeResult;
-window.easyEnglishGeminiNativeResult=function(id,ok,payload){
- if(!ok){
-   const match=String(payload||'').match(/Gemini HTTP (\d+)/);
-   if(match)payload=geminiFailure(Number(match[1]),{message:''});
-   else if(/Connection error|UnknownHost|timeout|network|Unable to resolve host/i.test(String(payload)))payload='پەیوەندی بە ئینتەرنێت نییە یان خزمەتگوزاری بەردەست نییە.';
- }
- return oldNativeGeminiResult(id,ok,payload);
-};
 
 function verified(){
  try{return localStorage.getItem(VERIFY_KEY)==='1' && (nativeGeminiKeyPresent() || geminiApiKey.length>=15)}catch(e){return false}
@@ -29,7 +21,7 @@ function onboarding(){
   <label for="gemini-key">Gemini API Key</label>
   <input id="gemini-key" type="password" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${hasStored?'کلیلی پێشوو پارێزراوە، بۆ تاقیکردنەوە بەردەوام بە':'Paste Gemini API Key'}">
   <label for="gemini-model">مۆدێلی مامۆستا</label>
-  <select id="gemini-model" dir="ltr"><option value="gemini-2.5-flash-lite" ${aiPrefs.model==='gemini-2.5-flash-lite'?'selected':''}>Gemini 2.5 Flash Lite</option><option value="gemini-2.5-flash" ${aiPrefs.model==='gemini-2.5-flash'?'selected':''}>Gemini 2.5 Flash</option></select>
+  <select id="gemini-model" dir="ltr">${GEMINI_MODELS.map(m=>`<option value="${aiEsc(m)}" ${aiPrefs.model===m?'selected':''}>${m==='auto'?'خۆکار — دۆزینەوەی مۆدێلی بەردەست':aiEsc(m)}</option>`).join('')}</select>
   <input id="gemini-remember" type="checkbox" checked style="display:none" aria-hidden="true">
   <button type="button" class="btn" data-action="ai-check" ${aiPending?'disabled':''}>${aiPending?'پەیوەندی تاقی دەکرێتەوە…':'پەیوەستبوون و چوونە ژوورەوە'}</button>
   ${aiStatus?'<div class="ee5-status" role="status">'+esc(aiStatus)+'</div>':''}

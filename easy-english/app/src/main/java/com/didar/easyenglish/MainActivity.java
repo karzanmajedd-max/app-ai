@@ -28,7 +28,35 @@ public class MainActivity extends Activity {
  @JavascriptInterface public boolean saveGeminiKey(String k,boolean remember){return storeSecret(k,remember);}
  @JavascriptInterface public boolean hasGeminiKey(){return !secret().isEmpty();}
  @JavascriptInterface public void clearGeminiKey(){memoryKey="";getPreferences(0).edit().remove(STORE).apply();}
- @JavascriptInterface public void geminiGenerate(String model,String id,String body){if(!("gemini-2.5-flash-lite".equals(model)||"gemini-2.5-flash".equals(model))){callback("window.easyEnglishGeminiNativeResult("+JSONObject.quote(id)+",false,'Model not permitted')");return;}new Thread(()->{String response="";boolean ok=false;HttpURLConnection conn=null;try{String key=secret();if(key.isEmpty())throw new IOException("Gemini API Key نییە");URL url=new URL("https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent");conn=(HttpURLConnection)url.openConnection();conn.setConnectTimeout(15000);conn.setReadTimeout(30000);conn.setRequestMethod("POST");conn.setDoOutput(true);conn.setRequestProperty("Content-Type","application/json");conn.setRequestProperty("x-goog-api-key",key);byte[] bytes=body.getBytes("UTF-8");conn.getOutputStream().write(bytes);int status=conn.getResponseCode();InputStream in=status>=200&&status<300?conn.getInputStream():conn.getErrorStream();ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] b=new byte[4096];int n;if(in!=null)while((n=in.read(b))>0&&out.size()<200000)out.write(b,0,n);response=out.toString("UTF-8");ok=status>=200&&status<300;if(!ok)response="Gemini HTTP "+status+": "+response.substring(0,Math.min(220,response.length()));}catch(Exception ex){response=ex.getMessage()==null?"Connection error":ex.getMessage();}finally{if(conn!=null)conn.disconnect();}callback("window.easyEnglishGeminiNativeResult("+JSONObject.quote(id)+","+ok+","+JSONObject.quote(response)+")");}).start();}
+ @JavascriptInterface public void geminiListModels(String id,String pageToken){
+  if(pageToken==null||pageToken.length()>4096){geminiResult(id,false,"Invalid page token");return;}
+  try{geminiRequest(id,"GET","models?pageSize=1000"+(pageToken.isEmpty()?"":"&pageToken="+java.net.URLEncoder.encode(pageToken,"UTF-8")),null);}catch(Exception e){geminiResult(id,false,"Invalid page token");}
+ }
+ @JavascriptInterface public void geminiGenerate(String model,String id,String body){
+  if(model==null||!model.matches("gemini-[A-Za-z0-9._-]{1,150}")){geminiResult(id,false,"Invalid model name");return;}
+  geminiRequest(id,"POST","models/"+model+":generateContent",body);
+ }
+ void geminiResult(String id,boolean ok,String response){callback("window.easyEnglishGeminiNativeResult("+JSONObject.quote(id)+","+ok+","+JSONObject.quote(response)+")");}
+ void geminiRequest(String id,String method,String path,String body){new Thread(()->{
+  String response="",key="";boolean ok=false;HttpURLConnection conn=null;
+  try{
+   key=secret();if(key.isEmpty())throw new IOException("Gemini API Key نییە");
+   conn=(HttpURLConnection)new URL("https://generativelanguage.googleapis.com/v1beta/"+path).openConnection();
+   conn.setConnectTimeout(15000);conn.setReadTimeout(30000);conn.setInstanceFollowRedirects(false);
+   conn.setRequestMethod(method);conn.setRequestProperty("x-goog-api-key",key);
+   if("POST".equals(method)){conn.setDoOutput(true);conn.setRequestProperty("Content-Type","application/json");try(OutputStream out=conn.getOutputStream()){out.write(body.getBytes("UTF-8"));}}
+   int status=conn.getResponseCode();ok=status>=200&&status<300;
+   InputStream stream=ok?conn.getInputStream():conn.getErrorStream();ByteArrayOutputStream out=new ByteArrayOutputStream();
+   if(stream!=null)try(InputStream in=stream){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1){if(out.size()+n>2000000)throw new IOException("Gemini response too large");out.write(b,0,n);}}
+   response=out.toString("UTF-8");
+   if(!ok){JSONObject error;try{error=new JSONObject(response).optJSONObject("error");}catch(Exception e){error=null;}
+    if(error==null)error=new JSONObject().put("message","Gemini HTTP "+status);
+    response=new JSONObject().put("httpStatus",status).put("error",error).toString();}
+  }catch(Exception ex){ok=false;response=ex.getMessage()==null?"Connection error":ex.getMessage();}
+  finally{if(conn!=null)conn.disconnect();}
+  if(!key.isEmpty())response=response.replace(key,"[REDACTED]");
+  geminiResult(id,ok,response);
+ }).start();}
  @JavascriptInterface public void setDailyReminder(boolean on,int h,int m,String text){ReminderReceiver.schedule(MainActivity.this,on,h,m,text);}
  }
  @Override protected void onDestroy(){if(rec!=null)rec.destroy();if(tts!=null){tts.stop();tts.shutdown();}if(web!=null)web.destroy();super.onDestroy();}

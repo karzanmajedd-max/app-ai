@@ -30,6 +30,7 @@ jobs:
         shell: bash
         run: |
           node --check easy-english/app/src/main/assets/improve-v5.js
+          node easy-english/tests/gemini.test.cjs
           python3 - <<'PY'
           from pathlib import Path
           root=Path('easy-english/app/src/main/assets')
@@ -65,3 +66,14 @@ jobs:
           else
             gh release create "$TAG" EasyEnglish_Olive_Fixed_v5.apk --repo "$GITHUB_REPOSITORY" --target main --title "Easy English 5.0 - Olive Cream Fixes" --notes "GitHub-built debug APK V5: high-contrast olive/cream styling, Gemini first-run verification and hidden normal API setup, corrected Gemini native callback, and microphone support with fallback. Lightweight build: Android TTS voice availability and AI voice recognition depend on device. Install and verify on your phone." --latest=false
           fi
+
+      - name: Publish API recovery APK
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[release-api]')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="easyenglish-api-fixed-v51"
+          cp easy-english/app/build/outputs/apk/debug/app-debug.apk EasyEnglish_API_Fixed_v5.1.apk
+          gh release create "$TAG" EasyEnglish_API_Fixed_v5.1.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Easy English 5.1 - Gemini API recovery" --notes "Automatic model discovery with pagination and text-generation filtering; recovery from unavailable models; precise redacted API error messages; native HTTPS transport and request cancellation. Regression checks and Android build run in CI. Device connection with your own key still needs verification. Separate app ID allows installation alongside version 5.0 without removing its data; enter your key again in 5.1. Debug test APK." --latest=false
