@@ -128,7 +128,44 @@ function report(){var out=topText("پوختە و بەراورد","ڕاپۆرتی
  out+='<div class="card"><h3>بەراوردی شەش مانگ</h3>';var ms=pastMonths(month,6),max=Math.max(1,...ms.map(monthlyExpense));ms.forEach(function(m){var n=monthlyExpense(m);out+='<div class="line"><div class="flex"><b>'+monthLabel(m)+'</b><span class="muted">'+amt(n)+'</span></div><div class="barGraph"><div style="width:'+(n/max*100)+'%"></div></div></div>';});out+='</div>';
  out+='<div class="card"><div class="muted">پارەی بەردەست تا کۆتایی مانگی دیاریکراو</div><div class="big">'+amt(balanceAt(month))+'</div></div>';return out;
 }
+
+function reminderSettings(){
+ var fallback={enabled:true,permission:false,times:["09:00","14:00","21:00"]};
+ try {
+   if(typeof ParemAndroid !== "undefined" && ParemAndroid.getReminderSettings){
+     var value=JSON.parse(ParemAndroid.getReminderSettings());
+     if(value && Array.isArray(value.times) && value.times.length===3)return value;
+   }
+ }catch(e){}
+ return fallback;
+}
+function reminderCard(){
+ var r=reminderSettings(), t=r.times, html='<div class="card"><h3>🔔 بیرخستنەوەی خەرجیی ڕۆژانە</h3>';
+ html+='<p class="muted">ڕۆژانە سێ جار ئاگادارت دەکاتەوە تا خەرجییەکانی ئەمڕۆ تۆمار بکەیت. بە دەستلێدانی نۆتیکیشن ڕاستەوخۆ دەچیتە خانەی زیادکردنی خەرجی.</p>';
+ html+='<label class="reminderSwitch"><input id="reminderEnabled" type="checkbox" '+(r.enabled?'checked':'')+' /><span>چالاککردنی سێ نۆتیکیشنی ڕۆژانە</span></label>';
+ html+='<div class="reminderTimes"><div class="formRow"><label>بەیانی</label><input id="reminderTime0" type="time" value="'+esc(t[0])+'"/></div>';
+ html+='<div class="formRow"><label>نیوەڕۆ</label><input id="reminderTime1" type="time" value="'+esc(t[1])+'"/></div>';
+ html+='<div class="formRow"><label>ئێوارە</label><input id="reminderTime2" type="time" value="'+esc(t[2])+'"/></div></div>';
+ html+='<div class="actions">'+btn("✓ پاشەکەوتکردنی کاتەکان","saveReminders","primary")+'</div>';
+ if(!r.permission)html+='<div class="hint">⚠ نۆتیکیشن لە ئەندرۆید ڕێگەی پێنەدراوە. تکایە لە ڕێکخستنەکانی مۆبایل ڕێگەی پێ بدە.</div><div class="actions">'+btn("ڕێگەدان بە نۆتیکیشن","notificationSettings")+'</div>';
+ html+='<p class="muted small">کاتەکان بە کاتی مۆبایلەکەتن. ئەندرۆید لە کاتی پاشەکەوتی پاتری یان Do Not Disturb دەتوانێت کەمێک دوا بخات.</p></div>';
+ return html;
+}
+function saveRemindersFromUi(){
+ var t=[0,1,2].map(function(i){return document.getElementById("reminderTime"+i).value;});
+ if(t.some(function(v){return !/^\d{2}:\d{2}$/.test(v);}) || new Set(t).size!==3){
+   alert("تکایە سێ کاتی دروست و جیاواز هەڵبژێرە.");return;
+ }
+ var enabled=document.getElementById("reminderEnabled").checked;
+ if(typeof ParemAndroid !== "undefined" && ParemAndroid.setReminderSettings){
+   ParemAndroid.setReminderSettings(enabled,t[0],t[1],t[2]);
+   notify("ڕێکخستنەکانی ئاگادارکردنەوە پاشەکەوت کران");
+ } else notify("ئەم تایبەتمەندییە تەنها لە ئەپی ئەندرۆید کار دەکات");
+}
+window.paremRefreshReminderSettings=function(){if(tab==="settings")render();};
+window.paremOpenExpense=function(){setTab("expenses");formExpense();};
 function settings(){var out=topText("هەموو شتێک لە ژێر دەستتدا","ڕێکخستن");
+ out+=reminderCard();
  out+='<div class="card"><h3>💵 پارەی سەرەتا</h3><div class="muted">ئەو پارەیەی پێش دەستپێکردنی تۆمارەکانت هەتبوو.</div><div class="money">'+amt(db.opening)+'</div><div class="muted">دەستپێک: '+monthLabel(db.openingMonth)+'</div><div class="actions">'+btn("گۆڕینی پارەی سەرەتا","opening")+'</div></div>';
  out+='<div class="card"><div class="flex"><h3>📁 بەشەکانی خەرجی</h3>'+btn("＋ بەشی نوێ","category","primary")+'</div>';db.cats.forEach(function(c){out+='<div class="rowItem"><span class="rowIcon">'+esc(c.emoji)+'</span><div class="rowBody"><b>'+esc(c.name)+'</b></div><button class="rowAction" data-editcat="'+esc(c.id)+'">دەستکاری</button>'+(defaultCats.some(function(a){return a[0]===c.id;})?'':'<button class="rowAction" data-deletecat="'+esc(c.id)+'">سڕینەوە</button>')+'</div>';});out+='</div>';
  out+='<div class="card"><h3>⚡ ڕێکخستنی بەشە خێراکان</h3><div class="muted">بە تیرەکان شوێنی بەشەکان بگۆڕە. شەش دانەی یەکەم لە سەرەکی دەردەکەون.</div>';db.quick.forEach(function(cid,i){var c=cat(cid);out+='<div class="rowItem"><span class="rowIcon">'+esc(c.emoji)+'</span><div class="rowBody"><b>'+esc(c.name)+'</b></div><button class="rowAction" data-quick-up="'+i+'">↑</button><button class="rowAction" data-quick-down="'+i+'">↓</button></div>';});out+='</div>';
@@ -198,6 +235,7 @@ document.addEventListener("click",function(e){var t=e.target.closest("button");i
  if(t.dataset.toggleRecurring){var a=db.recurring.find(function(x){return x.id===t.dataset.toggleRecurring;});a.active=!a.active;persist();render();return;}
  if(t.dataset.deleteRecurring){if(confirm("یاسای خەرجیی مانگانە بسڕدرێتەوە؟")){db.recurring=db.recurring.filter(function(x){return x.id!==t.dataset.deleteRecurring;});persist();render();}return;}
  switch(t.dataset.action){
+ case"saveReminders":saveRemindersFromUi();break;case"notificationSettings":if(typeof ParemAndroid !== "undefined" && ParemAndroid.openNotificationSettings) ParemAndroid.openNotificationSettings();break;
  case"expense":formExpense();break;case"salary":editSalary();break;case"income":addIncome();break;case"saving":saving();break;case"goal":goal();break;case"budget":budget();break;case"recurring":recurring();break;case"opening":opening();break;case"category":category();break;case"backup":backUp();break;case"restore":restore();break;case"quicksettings":setTab("settings");break;case"website":if(window.ParemAndroid&&ParemAndroid.openWebsite)ParemAndroid.openWebsite();else window.open("https://parem-karzan-2026.loftytrail13.chatgpt.site","_blank");break;
  }
 });
