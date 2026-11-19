@@ -52,8 +52,19 @@ public final class ReminderScheduler {
     return h >= 0 && h <= 23 && m >= 0 && m <= 59;
   }
   static boolean notificationPermission(Context c) {
-    return Build.VERSION.SDK_INT < 33 ||
-      c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+    if (Build.VERSION.SDK_INT >= 33 &&
+        c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+      return false;
+    }
+    if (Build.VERSION.SDK_INT >= 24) {
+      NotificationManager nm = (NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE);
+      if (nm != null && !nm.areNotificationsEnabled()) return false;
+      if (Build.VERSION.SDK_INT >= 26 && nm != null) {
+        NotificationChannel channel = nm.getNotificationChannel(CHANNEL);
+        if (channel != null && channel.getImportance() == NotificationManager.IMPORTANCE_NONE) return false;
+      }
+    }
+    return true;
   }
   public static String settingsJson(Context c) {
     try {
@@ -105,7 +116,15 @@ public final class ReminderScheduler {
       when.add(Calendar.DAY_OF_YEAR, 1);
     }
     AlarmManager am = manager(c);
-    if (am != null) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when.getTimeInMillis(), pending(c, slot));
+    if (am != null) {
+      try {
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when.getTimeInMillis(), pending(c, slot));
+      } catch (SecurityException denied) {
+        // Some OS builds enforce extra alarm restrictions. Keep a non-exact
+        // fallback instead of crashing or silently losing reminders.
+        am.set(AlarmManager.RTC_WAKEUP, when.getTimeInMillis(), pending(c, slot));
+      }
+    }
   }
   static void makeChannel(Context c) {
     if (Build.VERSION.SDK_INT >= 26) {
