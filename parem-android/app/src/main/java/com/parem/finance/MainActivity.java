@@ -11,6 +11,8 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
 import android.webkit.WebChromeClient;
 import android.webkit.JavascriptInterface;
 import android.view.WindowManager;
@@ -40,10 +42,29 @@ public class MainActivity extends Activity {
     web.getSettings().setJavaScriptEnabled(true);
     web.getSettings().setDomStorageEnabled(true);
     web.getSettings().setAllowFileAccess(true);
+    web.getSettings().setAllowFileAccessFromFileURLs(false);
+    web.getSettings().setAllowUniversalAccessFromFileURLs(false);
+    web.getSettings().setAllowContentAccess(false);
+    web.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
     web.getSettings().setDefaultTextEncodingName("UTF-8");
     web.getSettings().setBuiltInZoomControls(false);
     web.getSettings().setDisplayZoomControls(false);
     web.setWebViewClient(new WebViewClient() {
+      private boolean allowOrOpenExternally(String url) {
+        if (url.startsWith("file:///android_asset/")) return false;
+        if (url.startsWith("https://") || url.startsWith("http://")) {
+          try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+          } catch (Exception ignored) {}
+        }
+        return true;
+      }
+      @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        return allowOrOpenExternally(request.getUrl().toString());
+      }
+      @Override public boolean shouldOverrideUrlLoading(WebView view, String url) {
+        return allowOrOpenExternally(url);
+      }
       @Override public void onPageFinished(WebView view, String url) {
         pageReady = true;
         if (pendingExpense) openExpenseFromNotification();
