@@ -148,7 +148,31 @@ function goal(){popup("ئامانجی پاشەکەوت",field("amount","بڕی �
 function budget(){popup("سنووری خەرجی",field("category","بەش",catSelect("category",db.cats[0].id))+field("amount","سنووری ئەم مانگە بە دینار",moneyInput("amount",""))+field("month","مانگ",'<input type="month" name="month" value="'+month+'"/>'),function(f){db.budgets[String(f.get("month"))+"|"+String(f.get("category"))]=Math.max(0,num(f.get("amount")));});}
 function recurring(){popup("خەرجیی مانگانە",field("category","بەش",catSelect("category",db.cats[0].id))+field("amount","بڕ بە دینار",moneyInput("amount",""))+field("day","ڕۆژی مانگ",'<input type="number" name="day" min="1" max="31" value="1" required />'),function(f){var n=num(f.get("amount")),day=Number(f.get("day"));if(n<=0||day<1||day>31)throw Error("بڕ یان ڕۆژ هەڵەیە");db.recurring.push({id:id(),category:String(f.get("category")),amount:n,day:day,start:month,active:true});applyRecurring();});}
 function opening(){popup("پارەی سەرەتا",field("amount","بڕی پارەی سەرەتا",moneyInput("amount",db.opening))+field("month","مانگی دەستپێک",'<input type="month" name="month" value="'+esc(db.openingMonth)+'"/>'),function(f){db.opening=num(f.get("amount"));db.openingMonth=String(f.get("month"));});}
-function category(existing){var x=existing||{name:"",emoji:"📦"};popup(existing?"دەستکاری بەش":"بەشی نوێ",field("name","ناوی بەش",'<input name="name" value="'+esc(x.name)+'" required maxlength="55" />')+field("emoji","نیشانە",'<input name="emoji" value="'+esc(x.emoji)+'" maxlength="6"/>'),function(f){var n=String(f.get("name")).trim(),em=String(f.get("emoji")).trim()||"📦";if(!n)throw Error("ناوی بەش بنووسە");if(existing){existing.name=n;existing.emoji=em;}else{var i=id();db.cats.push({id:i,name:n,emoji:em});db.quick.push(i);}});}
+// Quick-choice icons for custom expense categories. The input stays editable for custom emoji.
+var iconChoices=["🛒","⛽","🥬","🍎","🍞","🍽️","☕","🏠","🏡","🚗","🚌","🚕","💡","💧","📱","🛜","🧾","💊","🏥","🩺","👶","🍼","👕","👟","🎒","📚","🎓","🎁","🎮","🎬","🏋️","✈️","💸","💳","🏦","🐈","✂️","🛠️","🧼","📦","⭐","🛍️"];
+function iconPickerMarkup(selected){
+  var result='<div class="formRow"><label>ئایکۆنی بەش هەڵبژێرە</label><div class="iconHelp">لە نیشانەکان یەکێک هەڵبژێرە؛ پێویست ناکات لە کیبۆرد بینووسیت.</div><div class="iconPicker" role="group" aria-label="هەڵبژاردنی ئایکۆن">';
+  iconChoices.forEach(function(em){result+='<button type="button" class="iconChoice'+(em===selected?' active':'')+'" data-choose-emoji="'+esc(em)+'" aria-label="نیشانە '+esc(em)+'" aria-pressed="'+(em===selected?'true':'false')+'">'+esc(em)+'</button>';});
+  result+='</div><div class="iconPreview"><span class="iconBig" id="iconSelectedPreview">'+esc(selected||"📦")+'</span><span class="muted">ئایکۆنی هەڵبژێردراو</span></div></div>';
+  result+=field("emoji","یان ئایکۆنی تایبەتی خۆت دابنێ",'<input id="emojiInput" name="emoji" value="'+esc(selected)+'" maxlength="12" placeholder="بۆ نموونە: 🎯" />');
+  return result;
+}
+function updateIconPreview(value){
+  var em=String(value||"").trim(),p=document.getElementById("iconSelectedPreview");
+  if(p)p.textContent=em||"📦";
+  document.querySelectorAll(".iconChoice").forEach(function(b){var yes=b.dataset.chooseEmoji===em;b.classList.toggle("active",yes);b.setAttribute("aria-pressed",yes?"true":"false");});
+}
+function category(existing){
+  var x=existing||{name:"",emoji:"📦"};
+  popup(existing?"دەستکاری بەش":"بەشی نوێ",
+    field("name","ناوی بەش",'<input name="name" value="'+esc(x.name)+'" required maxlength="55" />')+iconPickerMarkup(x.emoji||"📦"),
+    function(f){
+      var n=String(f.get("name")).trim(),em=String(f.get("emoji")).trim()||"📦";
+      if(!n)throw Error("ناوی بەش بنووسە");
+      if(existing){existing.name=n;existing.emoji=em;}
+      else{var i=id();db.cats.push({id:i,name:n,emoji:em});db.quick.push(i);}
+    });
+}
 function applyRecurring(){var now=isoToday(),nowMonth=monthOf(now),day=Number(now.slice(8)),changed=false;db.recurring.forEach(function(r){if(!r.active||r.start>nowMonth)return;var target=Math.min(r.day,new Date(Number(now.slice(0,4)),Number(now.slice(5,7)),0).getDate());if(day<target)return;var key=r.id+"-"+nowMonth;if(db.expenses.some(function(e){return e.recurringKey===key;}))return;db.expenses.push({id:id(),amount:r.amount,category:r.category,date:nowMonth+"-"+String(target).padStart(2,"0"),note:"خەرجیی مانگانە",recurringKey:key});changed=true;});if(changed)persist();}
 function swapQuick(i,j){if(i<0||j<0||i>=db.quick.length||j>=db.quick.length)return;var t=db.quick[i];db.quick[i]=db.quick[j];db.quick[j]=t;persist();render();}
 function mergeBackup(str){var x=JSON.parse(str);if(x.version!==2||!Array.isArray(x.expenses)||!Array.isArray(x.cats))throw Error("فایلی Backup ی پارەم 2 نییە");var kept=0;
@@ -162,6 +186,7 @@ window.paremBack=function(){if(!document.getElementById("dialog").hidden){closeP
 function backUp(){var data=JSON.stringify(db,null,2);if(window.ParemAndroid&&ParemAndroid.saveBackup){ParemAndroid.saveBackup(data);}else{var blob=new Blob([data],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Parem-Backup.json";a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},5000);}}
 function restore(){if(window.ParemAndroid&&ParemAndroid.openBackup){ParemAndroid.openBackup();}else{var input=document.createElement("input");input.type="file";input.accept=".json,application/json";input.onchange=function(){var r=new FileReader();r.onload=function(){window.receiveBackup(String(r.result));};r.readAsText(input.files[0]);};input.click();}}
 document.addEventListener("click",function(e){var t=e.target.closest("button");if(!t)return;
+ if(t.dataset.chooseEmoji){var selected=t.dataset.chooseEmoji,field=document.getElementById("emojiInput");if(field){field.value=selected;updateIconPreview(selected);}return;}
  if(t.dataset.tab){setTab(t.dataset.tab);return;}
  if(t.dataset.category){formExpense(t.dataset.category);return;}
  if(t.dataset.edit){formExpense(null,db.expenses.find(function(x){return x.id===t.dataset.edit;}));return;}
@@ -184,6 +209,7 @@ document.addEventListener("change",function(e){
  if(e.target.id==="rangeEnd"){rangeEnd=e.target.value;rangePreset="custom";render();}
 });
 document.addEventListener("input",function(e){
+ if(e.target.id==="emojiInput")updateIconPreview(e.target.value);
  if(e.target.matches('input[data-money]'))liveAmountFormat(e.target);
  if(e.target.id==="searchInput"){searchTerm=e.target.value;document.getElementById("expenseList").innerHTML=expenseRows();}
 });
