@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ckb" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1427"><title>پارەم</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="bar"><div class="brand"><span class="brandIcon">◈</span><span>پارەم<span class="gold">.</span></span></div><div id="headerMonth" class="monthTag">--/----</div></header>
+<main id="app" class="content"></main>
+<nav class="nav" id="nav">
+<button data-tab="home" class="selected"><span>⌂</span>سەرەکی</button>
+<button data-tab="expenses"><span>▤</span>خەرجی</button>
+<button data-tab="plan"><span>◎</span>پلاندانان</button>
+<button data-tab="report"><span>▥</span>ڕاپۆرت</button>
+<button data-tab="settings"><span>⚙</span>ڕێکخستن</button>
+</nav>
+<div id="dialog" class="dialog" hidden><div class="modal"><div class="modalHead"><h2 id="dialogTitle"></h2><button id="closeDialog" aria-label="داخستن">✕</button></div><div id="dialogBody"></div></div></div>
+<div id="toast" class="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
