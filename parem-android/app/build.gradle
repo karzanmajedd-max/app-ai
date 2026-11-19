@@ -3,7 +3,7 @@ android {
     namespace 'com.parem.finance'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.parem.finance.reminders'
+        applicationId 'com.parem.finance.stable'
         minSdk 24
         targetSdk 35
         versionCode 3
