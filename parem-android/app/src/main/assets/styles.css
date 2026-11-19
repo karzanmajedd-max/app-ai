@@ -9,3 +9,13 @@
 .iconPreview .iconBig{width:48px;height:48px;display:grid;place-items:center;font-size:29px;background:#293e65;border-radius:12px}
 .iconHelp{color:var(--muted);font-size:13px;line-height:1.7;margin:6px 0}
 @media(max-width:340px){.iconPicker{grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}.iconChoice{min-height:46px;font-size:22px}}
+
+
+/* Daily expense reminder controls */
+.reminderSwitch{display:flex;align-items:center;gap:11px;background:#1e3152;border:1px solid #40577a;border-radius:12px;padding:13px 12px;color:#f0f5ff;font-size:15px;font-weight:700;line-height:1.55;margin:12px 0}
+.reminderSwitch input{width:22px;height:22px;accent-color:#79a3ff;flex-shrink:0}
+.reminderTimes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:8px;align-items:start}
+.reminderTimes .formRow{min-width:0}
+.reminderTimes input{width:100%;min-width:0;box-sizing:border-box;padding:12px 6px;font-size:16px;direction:ltr;text-align:center;color-scheme:dark}
+.reminderTimes label{text-align:center;font-size:13px}
+@media(max-width:340px){.reminderTimes{grid-template-columns:1fr 1fr}.reminderTimes .formRow:last-child{grid-column:span 2}}
