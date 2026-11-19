@@ -45,6 +45,17 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 "$source" Parem_2_2_release_aligned_unsigned.apk
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 Parem_2_2_release_aligned_unsigned.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging Parem_2_2_release_aligned_unsigned.apk | grep -E '^package:|^sdkVersion:|^targetSdkVersion:'
+      - name: Export Android APK signing utility for local private signing
+        shell: bash
+        run: |
+          jar="$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar"
+          test -s "$jar"
+          cp "$jar" apksigner.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Android-ApkSigner-Tool
+          path: apksigner.jar
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: Parem-2-2-Unsigned-Release
