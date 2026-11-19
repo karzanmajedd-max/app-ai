@@ -1,6 +1,6 @@
 "use strict";
 (function(){
-var KEY="parem_local_v2",tab="home",month=currentMonth(),catFilter="all",searchTerm="";
+var KEY="parem_local_v2",tab="home",month=currentMonth(),catFilter="all",searchTerm="",rangePreset="2",rangeStart="",rangeEnd="";
 var defaultCats=[["market","مارکێت","🛒"],["fuel","بەنزین","⛽"],["produce","سەوزە و میوە","🥬"],["food","خواردن","🍽️"],["bills","پسووڵە","🧾"],["other","هیتر","➕"]];
 var db=load();
 function blank(){return {version:2,created:isoToday(),opening:0,openingMonth:currentMonth(),salaries:{},expenses:[],incomes:[],savings:[],savingGoal:0,budgets:{},recurring:[],cats:defaultCats.map(function(c){return {id:c[0],name:c[1],emoji:c[2]};}),quick:defaultCats.map(function(c){return c[0];})};}
@@ -19,7 +19,7 @@ function id(){return "p"+Date.now().toString(36)+Math.random().toString(36).slic
 function cat(id){return db.cats.find(function(c){return c.id===id;})||{id:"other",name:"هیتر",emoji:"➕"};}
 function listMonth(arr,m){return arr.filter(function(x){return monthOf(x.date)===m;});}
 function sum(arr){return arr.reduce(function(v,x){return v+Number(x.amount||0);},0);}
-function moneyInput(name,value){return '<input inputmode="numeric" name="'+name+'" placeholder="بۆ نموونە: 25،000" value="'+esc(value==null?"":fmt(value))+'" required />';}
+function moneyInput(name,value){return '<input inputmode="numeric" data-money="1" name="'+name+'" placeholder="بۆ نموونە: 25،000" value="'+esc(value==null||Number(value)===0?"":fmt(value))+'" required autocomplete="off" />';}
 function field(name,label,html){return '<div class="formRow"><label>'+label+'</label>'+html+'</div>';}
 function dateInput(value){return '<input type="date" name="date" value="'+esc(value||isoToday())+'" required />';}
 function catOptions(selected){return db.cats.map(function(c){return '<option value="'+esc(c.id)+'" '+(selected===c.id?"selected":"")+">"+esc(c.emoji+" "+c.name)+"</option>";}).join("");}
@@ -80,7 +80,48 @@ function plan(){var others=listMonth(db.incomes,month),goals=Number(db.savingGoa
  if(db.recurring.length){db.recurring.forEach(function(x){out+='<div class="rowItem"><div class="rowBody"><b>'+esc(cat(x.category).emoji+" "+cat(x.category).name)+'</b><div class="muted">'+amt(x.amount)+' • ڕۆژی '+x.day+'ی مانگ</div></div><button class="rowAction" data-toggle-recurring="'+esc(x.id)+'">'+(x.active?"چالاک":"ناچالاک")+'</button><button class="rowAction" data-delete-recurring="'+esc(x.id)+'">سڕینەوە</button></div>';});}else out+='<div class="blank">خەرجییە دووبارەبووەوەکان نییە</div>';out+='</div>';return out;
 }
 function pastMonths(m,n){var a=[],p=m;for(var i=0;i<n;i++){a.unshift(p);p=prevMonth(p);}return a;}
+
+// Format the amount as the user types, while preserving the caret position.
+function onlyDigits(v){return String(v||"").replace(/[٠-٩]/g,function(c){return "٠١٢٣٤٥٦٧٨٩".indexOf(c);}).replace(/[۰-۹]/g,function(c){return "۰۱۲۳۴۵۶۷۸۹".indexOf(c);}).replace(/[^0-9]/g,"");}
+function liveAmountFormat(el){
+ var original=el.value, oldCaret=el.selectionStart==null?original.length:el.selectionStart;
+ var left=onlyDigits(original.slice(0,oldCaret)).length, raw=onlyDigits(original);
+ raw=raw.replace(/^0+(?=\d)/,"");
+ var formatted=raw.replace(/\B(?=(\d{3})+(?!\d))/g,"،");
+ if(formatted===original)return;
+ el.value=formatted;
+ var offset=0,count=0;
+ if(left===0)offset=0;
+ else{for(var i=0;i<formatted.length;i++){if(/[0-9]/.test(formatted[i]))count++;offset=i+1;if(count>=left)break;}}
+ try{el.setSelectionRange(offset,offset);}catch(e){}
+}
+function endOfMonth(m){var a=m.split("-");return m+"-"+String(new Date(Number(a[0]),Number(a[1]),0).getDate()).padStart(2,"0");}
+function syncRangeFromPreset(){if(rangePreset==="custom")return;var n=Math.max(1,Number(rangePreset)||2),start=month;for(var i=1;i<n;i++)start=prevMonth(start);rangeStart=start+"-01";rangeEnd=endOfMonth(month);}
+function rangeSummary(){
+ if(!rangeStart||!rangeEnd)syncRangeFromPreset();
+ var html='<div class="card"><h3>📅 ڕاپۆرتی خەرجی بۆ ماوەی دیاریکراو</h3><div class="muted">کۆی خەرجیی چەند مانگ یان هەر دوو بەروارێک</div>';
+ html+='<div class="formRow"><label>ماوە</label><select id="rangePreset"><option value="2"'+(rangePreset==="2"?' selected':'')+'>٢ مانگ</option><option value="3"'+(rangePreset==="3"?' selected':'')+'>٣ مانگ</option><option value="6"'+(rangePreset==="6"?' selected':'')+'>٦ مانگ</option><option value="12"'+(rangePreset==="12"?' selected':'')+'>١٢ مانگ</option><option value="custom"'+(rangePreset==="custom"?' selected':'')+'>ماوەی دلخواز</option></select></div>';
+ html+='<div class="split"><div class="formRow"><label>لە بەروار</label><input type="date" id="rangeStart" value="'+esc(rangeStart)+'"></div><div class="formRow"><label>تا بەروار</label><input type="date" id="rangeEnd" value="'+esc(rangeEnd)+'"></div></div>';
+ if(!rangeStart||!rangeEnd||rangeStart>rangeEnd)return html+'<div class="hint">بەرواری دەستپێک دەبێت پێش بەرواری کۆتایی بێت.</div></div>';
+ var xs=db.expenses.filter(function(x){return x.date>=rangeStart&&x.date<=rangeEnd;});
+ var total=sum(xs);
+ html+='<div class="muted">کۆی خەرجی لە '+esc(dateLabel(rangeStart))+' تا '+esc(dateLabel(rangeEnd))+'</div><div class="big">'+amt(total)+'</div><div class="muted">'+xs.length+' تۆماری خەرجی</div>';
+ html+='<div class="divider"></div><h3>دابەشبوونی خەرجی بە مانگ</h3>';
+ var k=monthOf(rangeStart),last=monthOf(rangeEnd),shown=0,months=[];
+ while(k<=last&&shown++<240){months.push(k);var a=k.split("-"),d=new Date(Number(a[0]),Number(a[1]),1);k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+ var max=Math.max(1,...months.map(function(m){return sum(xs.filter(function(x){return monthOf(x.date)===m;}));}));
+ months.forEach(function(m){var v=sum(xs.filter(function(x){return monthOf(x.date)===m;}));html+='<div class="line"><div class="flex"><b>'+esc(monthLabel(m))+'</b><span class="muted">'+amt(v)+'</span></div><div class="barGraph"><div style="width:'+(100*v/max)+'%"></div></div></div>';});
+ if(!xs.length)html+='<div class="blank">لەو ماوەیەدا خەرجییەک تۆمار نەکراوە.</div>';
+ else{
+   var by={};xs.forEach(function(x){by[x.category]=(by[x.category]||0)+Number(x.amount||0);});
+   var sorted=Object.entries(by).sort(function(a,b){return b[1]-a[1];});
+   html+='<div class="divider"></div><h3>زۆرترین خەرجی لەم ماوەیەدا</h3>';
+   sorted.forEach(function(x,i){var c=cat(x[0]);html+='<div class="line"><div class="flex"><b>'+(i===0?'🏅 ':'')+esc(c.emoji+" "+c.name)+'</b><span>'+amt(x[1])+'</span></div><div class="barGraph"><div style="width:'+(total?100*x[1]/total:0)+'%"></div></div></div>';});
+ }
+ return html+'</div>';
+}
 function report(){var out=topText("پوختە و بەراورد","ڕاپۆرتی دارایی")+chooseMonth(),inc=monthlyIncome(month),spent=monthlyExpense(month),net=inc-spent;
+ out+=rangeSummary();
  out+='<div class="split"><div class="card mini"><div class="muted">داهات</div><div class="money ok">'+fmt(inc)+'</div><div class="muted">دینار</div></div><div class="card mini"><div class="muted">خەرجی</div><div class="money warn">'+fmt(spent)+'</div><div class="muted">دینار</div></div></div>';
  out+='<div class="card"><div class="flex"><b>جیاوازی داهات و خەرجی</b><strong class="'+(net>=0?"ok":"warn")+'">'+amt(net)+'</strong></div><div class="hint">ئەمە پاشەکەوتی ڕاستەقینە نییە؛ بڕی پاشەکەوتی جیاکراوە لە پلانداناندا دیارە.</div></div>';
  out+='<div class="card"><h3>زۆرترین پارەت بۆ چی خەرج کردووە؟</h3>';var cats=byCategory(month);if(!cats.length)out+='<div class="blank">هێشتا خەرجییەک نییە</div>';cats.forEach(function(x,i){var c=cat(x[0]);out+='<div class="line"><div class="flex"><b>'+(i===0?"🏅 ":"")+esc(c.emoji+" "+c.name)+'</b><b>'+amt(x[1])+'</b></div><div class="barGraph"><div style="width:'+Math.min(100,spent?x[1]/spent*100:0)+'%"></div></div></div>';});out+='</div>';
@@ -135,9 +176,18 @@ document.addEventListener("click",function(e){var t=e.target.closest("button");i
  case"expense":formExpense();break;case"salary":editSalary();break;case"income":addIncome();break;case"saving":saving();break;case"goal":goal();break;case"budget":budget();break;case"recurring":recurring();break;case"opening":opening();break;case"category":category();break;case"backup":backUp();break;case"restore":restore();break;case"quicksettings":setTab("settings");break;case"website":if(window.ParemAndroid&&ParemAndroid.openWebsite)ParemAndroid.openWebsite();else window.open("https://parem-karzan-2026.loftytrail13.chatgpt.site","_blank");break;
  }
 });
-document.addEventListener("change",function(e){if(e.target.id==="monthPick"){month=e.target.value||currentMonth();catFilter="all";searchTerm="";render();}if(e.target.id==="catFilter"){catFilter=e.target.value;document.getElementById("expenseList").innerHTML=expenseRows();}});
-document.addEventListener("input",function(e){if(e.target.id==="searchInput"){searchTerm=e.target.value;document.getElementById("expenseList").innerHTML=expenseRows();}});
+document.addEventListener("change",function(e){
+ if(e.target.id==="monthPick"){month=e.target.value||currentMonth();catFilter="all";searchTerm="";syncRangeFromPreset();render();}
+ if(e.target.id==="catFilter"){catFilter=e.target.value;document.getElementById("expenseList").innerHTML=expenseRows();}
+ if(e.target.id==="rangePreset"){rangePreset=e.target.value; if(rangePreset!=="custom")syncRangeFromPreset();render();}
+ if(e.target.id==="rangeStart"){rangeStart=e.target.value;rangePreset="custom";render();}
+ if(e.target.id==="rangeEnd"){rangeEnd=e.target.value;rangePreset="custom";render();}
+});
+document.addEventListener("input",function(e){
+ if(e.target.matches('input[data-money]'))liveAmountFormat(e.target);
+ if(e.target.id==="searchInput"){searchTerm=e.target.value;document.getElementById("expenseList").innerHTML=expenseRows();}
+});
 document.getElementById("closeDialog").onclick=closePopup;
 document.getElementById("dialog").addEventListener("click",function(e){if(e.target.id==="dialog")closePopup();});
-applyRecurring();render();
+syncRangeFromPreset();applyRecurring();render();
 })();
